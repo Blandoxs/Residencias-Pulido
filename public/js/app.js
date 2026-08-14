@@ -2,7 +2,7 @@
  * Arranque de la aplicacion: acceso, navegacion entre vistas,
  * cinta de estado operativo y sesion del usuario.
  */
-import { api, estado, esc, aviso, abrirModal, puede, formulario, leerFormulario } from './nucleo.js';
+import { api, estado, esc, aviso, abrirModal, puede, formulario, leerFormulario, detectarModo } from './nucleo.js';
 import * as vistas from './vistas.js';
 
 const ROLES = { admin: 'Administrador', supervisor: 'Supervisor', consulta: 'Consulta' };
@@ -28,6 +28,21 @@ setInterval(actualizarReloj, 30000);
 iniciar();
 
 async function iniciar() {
+  // Sin servidor Node detras, la aplicacion corre en modo demostracion.
+  await detectarModo();
+
+  if (estado.demostracion) {
+    document.getElementById('nota-servidor').classList.add('oculto');
+    document.getElementById('nota-demo').classList.remove('oculto');
+    document.getElementById('cinta-demo').classList.remove('oculto');
+    document.getElementById('btn-entrar-demo').onclick = () => {
+      const f = document.getElementById('form-acceso');
+      f.usuario.value = 'admin';
+      f.contrasena.value = 'demo';
+      f.requestSubmit();
+    };
+  }
+
   try {
     const d = await api.obtener('/api/sesion');
     if (d.usuario) return await entrar(d.usuario);

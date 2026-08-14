@@ -39,6 +39,12 @@ Para desarrollo con recarga automática:
 npm run dev
 ```
 
+Para ver el **modo demostración** tal como se publica en línea (sin servidor ni base de datos):
+
+```bash
+npm run demo
+```
+
 Para borrar la base de datos y volver a generarla con datos de demostración:
 
 ```bash
@@ -189,14 +195,41 @@ Recidencias Pulido/
 │   │   ├── cfe-blanco.svg Logotipo para fondos oscuros (barra y credencial)
 │   │   └── favicon.svg
 │   └── js/
-│       ├── app.js         Acceso, navegación y campana de notificaciones
+│       ├── app.js         Acceso, navegación y cinta de estado
 │       ├── nucleo.js      Cliente de la API y componentes reutilizables
-│       └── vistas.js      Pantallas de cada módulo
+│       ├── vistas.js      Pantallas de cada módulo
+│       └── servidor-demo.js  Servidor simulado (solo para la demostración en línea)
 ├── scripts/
-│   └── reiniciar-bd.js
+│   ├── reiniciar-bd.js
+│   └── servidor-estatico.js  Prueba local del modo demostración
+├── .github/workflows/
+│   └── pages.yml          Publicación automática de la demostración
 └── datos/
     └── sigev.db           Base de datos (se crea sola en el primer arranque)
 ```
+
+### Modo demostración
+
+El sistema real necesita Node y SQLite, así que **no puede ejecutarse en GitHub Pages**, que
+solo sirve archivos estáticos. Para poder mostrar el sistema con un enlace, la aplicación
+detecta al arrancar si hay un servidor detrás:
+
+| | Con servidor (`npm start`) | Sin servidor (GitHub Pages) |
+|---|---|---|
+| Datos | SQLite en `datos/sigev.db` | `localStorage` del navegador |
+| API | `src/api.js` sobre Node | `public/js/servidor-demo.js` |
+| Sesión | Token en cookie HttpOnly | Simulada (`admin` / `demo`) |
+| Correo | SMTP opcional | No disponible |
+| Interfaz, semáforo y motor de vigencias | **Los mismos** | **Los mismos** |
+
+Cuando corre sin servidor lo advierte en la pantalla de acceso y con una marca
+**DEMOSTRACIÓN** en la cinta de estado, para que no se confunda con el sistema en operación.
+Las vistas y los formularios no se duplican: solo se sustituye la capa que atiende la API.
+
+**Para activar la publicación** (una sola vez, desde la web de GitHub):
+*Settings → Pages → Build and deployment → Source: **GitHub Actions***.
+A partir de ahí, cada `git push` a `main` republica la demostración automáticamente en
+`https://blandoxs.github.io/Residencias-Pulido/`.
 
 ### Identidad gráfica
 

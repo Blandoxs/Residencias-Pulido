@@ -81,10 +81,21 @@
         Entrar <svg class="ico"><use href="#i-rayo" /></svg>
       </button>
 
-      <p class="acceso__nota">
+      <p class="acceso__nota" id="nota-servidor">
         En el primer arranque el sistema genera la contrasena del administrador y la
         muestra en la consola del servidor, con copia en <code>datos/acceso-inicial.txt</code>.
       </p>
+
+      <div class="acceso__demo oculto" id="nota-demo">
+        <strong>Modo demostracion</strong>
+        <p>
+          Esta version corre completa dentro del navegador, sin servidor: los datos son de
+          ejemplo y se guardan solo en este equipo. El sistema real usa Node y SQLite.
+        </p>
+        <button class="boton boton--bloque" type="button" id="btn-entrar-demo">
+          Entrar a la demostracion
+        </button>
+      </div>
     </form>
   </main>
 </section>
@@ -132,6 +143,7 @@
     <span class="cinta__dato" data-estado="critico"><b id="c-critico">0</b> criticos</span>
     <span class="cinta__dato" data-estado="proximo"><b id="c-proximo">0</b> por vencer</span>
     <span class="cinta__dato" data-estado="vigente"><b id="c-vigente">0</b> vigentes</span>
+    <span class="cinta__demo oculto" id="cinta-demo">Demostracion</span>
     <span class="cinta__sello" id="cinta-sello">Ultima revision: —</span>
   </div>
 

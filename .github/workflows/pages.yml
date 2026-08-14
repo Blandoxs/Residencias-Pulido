@@ -1,0 +1,40 @@
+name: Publicar demostracion en GitHub Pages
+
+# Publica la carpeta public/ como sitio estatico. Al no haber un servidor Node
+# detras, la aplicacion arranca en modo demostracion (public/js/servidor-demo.js).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - name: Obtener el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empaquetar la carpeta public
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Desplegar
+        id: despliegue
+        uses: actions/deploy-pages@v4

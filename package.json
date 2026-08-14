@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
     "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
+    "demo": "node scripts/servidor-estatico.js",
     "reiniciar-bd": "node --disable-warning=ExperimentalWarning scripts/reiniciar-bd.js"
   },
   "keywords": [
