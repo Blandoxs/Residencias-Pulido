@@ -1,0 +1,19 @@
+# Base de datos y credenciales generadas en tiempo de ejecucion
+datos/
+respaldo-demo/
+*.db
+*.db-wal
+*.db-shm
+acceso-inicial.txt
+
+# Dependencias opcionales (nodemailer)
+node_modules/
+package-lock.json
+
+# Herramientas y sistema operativo
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.log

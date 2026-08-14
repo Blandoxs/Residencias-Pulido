@@ -1,0 +1,25 @@
+{
+  "name": "sigev-cfe",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SIGEV - Sistema de Gestion de Equipo y Vigencias (gafetes, extintores y equipo con caducidad) con alertas al administrador. Tematica institucional CFE.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
+    "reiniciar-bd": "node --disable-warning=ExperimentalWarning scripts/reiniciar-bd.js"
+  },
+  "keywords": [
+    "cfe",
+    "gafetes",
+    "extintores",
+    "vigencias",
+    "inventario",
+    "residencias"
+  ],
+  "license": "MIT"
+}
