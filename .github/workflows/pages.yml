@@ -1,11 +1,11 @@
-name: Publicar demostracion en GitHub Pages
+name: Publicar demostracion
 
-# Publica el contenido de public/ en la rama gh-pages, que es la que sirve
-# GitHub Pages. Al no haber un servidor Node detras, la aplicacion arranca en
-# modo demostracion (public/js/servidor-demo.js).
+# Copia el contenido de public/ a la rama gh-pages, que es la que sirve
+# GitHub Pages. Al no haber un servidor Node detras, la aplicacion arranca
+# en modo demostracion (public/js/servidor-demo.js).
 #
-# Se usa la rama gh-pages en lugar del artefacto de Pages porque asi no hace
-# falta cambiar el origen de publicacion en la configuracion del repositorio.
+# Se publica por rama y no con el artefacto de Pages para no depender de que
+# el origen de publicacion este configurado como "GitHub Actions".
 
 on:
   push:
@@ -26,15 +26,29 @@ jobs:
       - name: Obtener el repositorio
         uses: actions/checkout@v4
 
-      - name: Publicar la carpeta public en gh-pages
+      - name: Copiar public/ a la rama gh-pages
+        shell: bash
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd public
-          git init -q
+          set -e
+          sitio="$RUNNER_TEMP/sitio"
+          mkdir -p "$sitio"
+          cp -r public/. "$sitio/"
+          touch "$sitio/.nojekyll"
+
+          cd "$sitio"
+          git init -q -b gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -qm "Demostracion publicada desde ${GITHUB_SHA::7}"
-          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
-          echo "Demostracion publicada en la rama gh-pages"
+          git commit -qm "Demostracion publicada desde ${GITHUB_SHA:0:7}"
+
+          echo "Archivos que se publican:"
+          git ls-files
+
+          git push --force --quiet \
+            "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            gh-pages:gh-pages
+
+          echo "Listo: https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
