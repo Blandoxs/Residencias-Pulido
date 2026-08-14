@@ -134,6 +134,21 @@ html, body {
 }
 .acceso__nota code { font-family: var(--mono); font-size: .74rem; color: var(--verde); }
 
+.acceso__demo {
+  margin-top: 22px; padding: 16px; border: 1px solid var(--tinta); border-left: 4px solid #d9a300;
+  background: #fdfaf0;
+}
+.acceso__demo strong {
+  display: block; font-family: var(--mono); font-size: .66rem; letter-spacing: .16em;
+  text-transform: uppercase; color: #8a6800; margin-bottom: 7px;
+}
+.acceso__demo p { margin: 0 0 12px; font-size: .8rem; line-height: 1.55; color: var(--gris); }
+
+.cinta__demo {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; text-transform: uppercase;
+  background: #d9a300; color: #201a00; padding: 3px 9px; margin-left: 16px; font-weight: 700;
+}
+
 @media (max-width: 900px) {
   .acceso { grid-template-columns: 1fr; }
   .acceso__lienzo { padding: 30px 22px; border-right: 0; border-bottom: 3px solid var(--verde); }

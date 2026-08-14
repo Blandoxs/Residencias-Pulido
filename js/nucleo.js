@@ -8,7 +8,33 @@ export const estado = {
   catalogos: null,
   configuracion: {},
   notificaciones: 0,
+  /** true cuando la aplicacion corre sin servidor (GitHub Pages). */
+  demostracion: false,
 };
+
+/* ==================== MODO DEMOSTRACION ==================== */
+
+let servidorDemo = null;
+
+/**
+ * Comprueba si hay un servidor Node detras. Si no lo hay —por ejemplo al
+ * publicar la carpeta public/ en GitHub Pages— carga el servidor simulado
+ * que reimplementa la API dentro del navegador.
+ */
+export async function detectarModo() {
+  try {
+    const r = await fetch('/api/sesion', { headers: { Accept: 'application/json' } });
+    if ((r.headers.get('content-type') ?? '').includes('application/json')) {
+      estado.demostracion = false;
+      return false;
+    }
+  } catch {
+    /* sin servidor */
+  }
+  servidorDemo = await import('./servidor-demo.js');
+  estado.demostracion = true;
+  return true;
+}
 
 const NIVEL = { admin: 3, supervisor: 2, consulta: 1 };
 
@@ -20,6 +46,17 @@ export function puede(rolMinimo) {
 /* ============================ API ============================ */
 
 async function peticion(metodo, ruta, cuerpo) {
+  // En modo demostracion la peticion la atiende el servidor simulado.
+  if (estado.demostracion && servidorDemo) {
+    try {
+      return await servidorDemo.atender(metodo, ruta, cuerpo ?? {});
+    } catch (fallo) {
+      const error = new Error(fallo?.mensaje ?? 'Error en la demostracion');
+      error.codigo = fallo?.codigo ?? 500;
+      throw error;
+    }
+  }
+
   const respuesta = await fetch(ruta, {
     method: metodo,
     headers: cuerpo ? { 'Content-Type': 'application/json' } : {},
@@ -47,6 +84,32 @@ export const api = {
   actualizar: (ruta, cuerpo) => peticion('PUT', ruta, cuerpo),
   eliminar: (ruta) => peticion('DELETE', ruta),
 };
+
+/**
+ * Descarga el CSV de un modulo. Con servidor navega al servicio de
+ * exportacion; en la demostracion genera el archivo en el navegador.
+ */
+export function descargarCSV(modulo) {
+  if (!estado.demostracion) {
+    window.location.href = `/api/exportar/${modulo}`;
+    return;
+  }
+  const contenido = servidorDemo?.exportarCSV(modulo);
+  if (!contenido) return aviso('Ese modulo no se puede exportar en la demostracion.', 'error');
+
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(new Blob([contenido], { type: 'text/csv;charset=utf-8' }));
+  enlace.download = `${modulo}_${hoy()}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 4000);
+}
+
+/** Reinicia los datos de la demostracion. */
+export function reiniciarDemostracion() {
+  servidorDemo?.reiniciarDemostracion();
+}
 
 /* ============================ FORMATO ============================ */
 

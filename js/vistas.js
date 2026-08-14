@@ -4,7 +4,7 @@
  */
 import {
   api, estado, esc, fecha, fechaHora, hoy, marca, marcaFecha, clasificar, tabla, formulario,
-  leerFormulario, activarFotos, abrirModal, confirmar, aviso, puede, icono, celdaClave,
+  leerFormulario, activarFotos, abrirModal, confirmar, aviso, puede, icono, celdaClave, descargarCSV,
 } from './nucleo.js';
 
 /* ================================================================== */
@@ -80,9 +80,7 @@ async function pantallaCatalogo(cont, cfg) {
     temporizador = setTimeout(cargar, 220);
   });
 
-  cont.querySelector('#btn-exportar').onclick = () => {
-    window.location.href = `/api/exportar/${cfg.exportar ?? cfg.clave}`;
-  };
+  cont.querySelector('#btn-exportar').onclick = () => descargarCSV(cfg.exportar ?? cfg.clave);
 
   const abrirFormulario = (registro) => {
     const esNuevo = !registro;
@@ -386,7 +384,7 @@ export async function vigencias(cont) {
       cargar();
     })
   );
-  cont.querySelector('#btn-exportar').onclick = () => (window.location.href = '/api/exportar/vigencias');
+  cont.querySelector('#btn-exportar').onclick = () => descargarCSV('vigencias');
   cont.querySelector('#btn-revisar-v').onclick = async (e) => {
     e.target.disabled = true;
     const r = await api.crear('/api/alertas/revisar');
@@ -1172,5 +1170,5 @@ export async function bitacora(cont) {
       filas,
       'Bitacora vacia'
     )}`;
-  cont.querySelector('#btn-exportar').onclick = () => (window.location.href = '/api/exportar/bitacora');
+  cont.querySelector('#btn-exportar').onclick = () => descargarCSV('bitacora');
 }
