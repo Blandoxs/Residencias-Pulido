@@ -201,9 +201,8 @@ Recidencias Pulido/
 │       └── servidor-demo.js  Servidor simulado (solo para la demostración en línea)
 ├── scripts/
 │   ├── reiniciar-bd.js
-│   └── servidor-estatico.js  Prueba local del modo demostración
-├── .github/workflows/
-│   └── pages.yml          Publicación automática de la demostración
+│   ├── servidor-estatico.js     Prueba local del modo demostración
+│   └── publicar-demostracion.js Publica public/ en la rama gh-pages
 └── datos/
     └── sigev.db           Base de datos (se crea sola en el primer arranque)
 ```
@@ -226,10 +225,17 @@ Cuando corre sin servidor lo advierte en la pantalla de acceso y con una marca
 **DEMOSTRACIÓN** en la cinta de estado, para que no se confunda con el sistema en operación.
 Las vistas y los formularios no se duplican: solo se sustituye la capa que atiende la API.
 
-**Para activar la publicación** (una sola vez, desde la web de GitHub):
-*Settings → Pages → Build and deployment → Source: **GitHub Actions***.
-A partir de ahí, cada `git push` a `main` republica la demostración automáticamente en
-`https://blandoxs.github.io/Residencias-Pulido/`.
+**Demostración en línea:** https://blandoxs.github.io/Residencias-Pulido/ (acceso `admin` / `demo`)
+
+Para republicarla después de cambiar la interfaz, con los cambios ya confirmados:
+
+```bash
+npm run publicar
+```
+
+El comando copia `public/` a la rama `gh-pages` —que es la que sirve GitHub Pages— y el
+publicador propio de GitHub la despliega en aproximadamente un minuto. No usa GitHub Actions,
+así que funciona aunque la cuenta no lo tenga disponible.
 
 ### Identidad gráfica
 
