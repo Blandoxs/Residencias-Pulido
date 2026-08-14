@@ -6,8 +6,11 @@
  *   admin      -> usuarios, configuracion y bitacora
  */
 import { Router } from './router.js';
-import { bd, leerConfiguracion, guardarConfiguracion, umbrales, bitacora } from './bd.js';
-import { listarVigencias, resumenVigencias } from './vigencias.js';
+import {
+  bd, leerConfiguracion, guardarConfiguracion, umbrales, bitacora,
+  tiposAlerta, umbralesPorTipo, guardarTipoAlerta,
+} from './bd.js';
+import { listarVigencias, resumenVigencias, SEMAFORO } from './vigencias.js';
 import { revisarVencimientos } from './alertas.js';
 import { crearHash, iniciarSesion, cerrarSesion, publico, exigirRol } from './auth.js';
 import { ErrorApp, txt, num, esFecha, aCSV, hoyISO, estadoVigencia } from './util.js';
@@ -149,7 +152,7 @@ api.get('/api/panel', () => {
 
   const contar = (sql) => bd.prepare(sql).get().n;
   const porModulo = {};
-  for (const m of ['gafetes', 'extintores', 'equipos']) {
+  for (const m of ['gafetes', 'extintores', 'equipos', 'licencias']) {
     const propios = items.filter((i) => i.modulo === m);
     porModulo[m] = {
       total: propios.length,
@@ -183,16 +186,31 @@ api.get('/api/panel', () => {
       fecha: i.fecha,
       dias: i.dias,
       clasificacion: i.clasificacion,
+      semaforo: i.semaforo,
     }));
+
+  // Reparto por tipo de elemento del anteproyecto.
+  const porTipo = tiposAlerta().map((t) => {
+    const propios = items.filter((i) => i.tipo === t.clave);
+    return {
+      ...t,
+      total: propios.length,
+      rojo: propios.filter((i) => i.semaforo === 'rojo').length,
+      amarillo: propios.filter((i) => i.semaforo === 'amarillo').length,
+      verde: propios.filter((i) => i.semaforo === 'verde').length,
+    };
+  });
 
   return {
     umbrales: u,
     linea,
+    porTipo,
     totales: {
       empleados: contar('SELECT COUNT(*) AS n FROM empleados WHERE activo = 1'),
       gafetes: contar('SELECT COUNT(*) AS n FROM gafetes'),
       extintores: contar('SELECT COUNT(*) AS n FROM extintores'),
       equipos: contar('SELECT COUNT(*) AS n FROM equipos'),
+      licencias: contar('SELECT COUNT(*) AS n FROM licencias'),
       notificaciones: contar('SELECT COUNT(*) AS n FROM notificaciones WHERE leida = 0'),
     },
     resumen,
@@ -222,16 +240,22 @@ api.get('/api/catalogos', () => ({
   tiposGafete: ['Empleado', 'Contratista', 'Visitante frecuente', 'Prestador de servicio social', 'Residente'],
   nivelesAcceso: ['General', 'Areas energizadas', 'Subestaciones', 'Almacen', 'Total'],
   categoriasEquipo: [
+    'Botiquin de primeros auxilios',
+    'Arnes de seguridad',
     'Equipo de proteccion personal',
     'Herramienta aislada',
     'Instrumento de medicion',
     'Equipo contra incendio',
     'Insumo con caducidad',
-    'Equipo de comunicacion',
   ],
+  tiposLicencia: ['Automovilista', 'Chofer', 'Chofer de servicio publico', 'Federal tipo B', 'Federal tipo C', 'Federal tipo E', 'Motociclista'],
+  ambitosLicencia: ['Estatal', 'Federal'],
   estadosGafete: ['Activo', 'Suspendido', 'Cancelado', 'En tramite'],
   estadosExtintor: ['Operativo', 'En mantenimiento', 'Fuera de servicio', 'Baja'],
   estadosEquipo: ['En servicio', 'En almacen', 'En mantenimiento', 'Baja'],
+  estadosLicencia: ['Vigente', 'En tramite', 'Suspendida', 'Cancelado'],
+  tiposAlerta: tiposAlerta(),
+  semaforo: SEMAFORO,
   departamentos: bd.prepare("SELECT DISTINCT departamento AS d FROM empleados WHERE departamento <> '' ORDER BY d").all().map((r) => r.d),
 }), 'consulta');
 
@@ -293,7 +317,11 @@ api.get('/api/gafetes/:id/credencial', ({ params }) => {
     )
     .get(num(params.id, -1));
   if (!g) throw new ErrorApp('El gafete no existe', 404);
-  return { gafete: g, configuracion: leerConfiguracion(), vigencia: estadoVigencia(g.fecha_vencimiento, umbrales()) };
+  return {
+    gafete: g,
+    configuracion: leerConfiguracion(),
+    vigencia: estadoVigencia(g.fecha_vencimiento, umbralesPorTipo().gafete ?? umbrales()),
+  };
 }, 'consulta');
 
 /* ================================================================== */
@@ -345,9 +373,11 @@ registrarEntidad({
     { nombre: 'marca' },
     { nombre: 'modelo' },
     { nombre: 'serie' },
+    { nombre: 'tipo_alerta', req: true, etiqueta: 'Tipo de elemento', max: 20 },
     { nombre: 'ubicacion' },
     { nombre: 'responsable_id', tipo: 'id' },
     { nombre: 'fecha_adquisicion', tipo: 'fecha' },
+    { nombre: 'fecha_inicio', tipo: 'fecha', req: true, etiqueta: 'Fecha de inicio de vigencia' },
     { nombre: 'fecha_vencimiento', tipo: 'fecha', req: true, etiqueta: 'Fecha de vencimiento' },
     { nombre: 'frecuencia_meses', tipo: 'entero' },
     { nombre: 'fecha_ultimo_mantenimiento', tipo: 'fecha' },
@@ -357,6 +387,53 @@ registrarEntidad({
 });
 
 /* ================================================================== */
+/* Licencias de conducir                                               */
+/* ================================================================== */
+
+registrarEntidad({
+  ruta: 'licencias',
+  tabla: 'licencias',
+  modulo: 'Licencias',
+  orden: 'l.fecha_vencimiento',
+  busqueda: ['l.numero', 'e.nombre', 'e.rpe', 'l.tipo', 'l.ambito'],
+  consultaSQL: `SELECT l.*, e.nombre AS empleado, e.rpe, e.puesto, e.departamento
+                FROM licencias l JOIN empleados e ON e.id = l.empleado_id`,
+  campos: [
+    { nombre: 'numero', req: true, etiqueta: 'Numero de licencia', max: 40 },
+    { nombre: 'empleado_id', tipo: 'id', req: true, etiqueta: 'Empleado' },
+    { nombre: 'tipo', req: true, etiqueta: 'Tipo de licencia' },
+    { nombre: 'ambito', req: true, etiqueta: 'Ambito' },
+    { nombre: 'autoridad', etiqueta: 'Autoridad emisora' },
+    { nombre: 'fecha_inicio', tipo: 'fecha', req: true, etiqueta: 'Fecha de expedicion' },
+    { nombre: 'fecha_vencimiento', tipo: 'fecha', req: true, etiqueta: 'Fecha de vencimiento' },
+    { nombre: 'restricciones', max: 200 },
+    { nombre: 'estado', req: true, etiqueta: 'Estado' },
+    { nombre: 'observaciones', max: 1000 },
+  ],
+});
+
+/* ================================================================== */
+/* Tipos de elemento y sus umbrales de aviso                           */
+/* ================================================================== */
+
+api.get('/api/tipos-alerta', () => tiposAlerta(), 'consulta');
+
+api.put('/api/tipos-alerta', ({ cuerpo, usuario }) => {
+  const claves = tiposAlerta().map((t) => t.clave);
+  for (const [clave, valores] of Object.entries(cuerpo)) {
+    if (!claves.includes(clave)) continue;
+    const proximo = num(valores?.dias_proximo, 30);
+    const critico = num(valores?.dias_critico, 7);
+    if (critico > proximo) {
+      throw new ErrorApp(`En "${clave}" el umbral critico no puede ser mayor que el de aviso previo`, 400);
+    }
+    guardarTipoAlerta(clave, proximo, critico);
+  }
+  bitacora(usuario.usuario, 'Modificacion', 'Configuracion', 'Umbrales por tipo de elemento actualizados');
+  return tiposAlerta();
+}, 'admin');
+
+/* ================================================================== */
 /* Vigencias (vista unificada)                                         */
 /* ================================================================== */
 
@@ -364,9 +441,16 @@ api.get('/api/vigencias', ({ query }) => {
   let items = listarVigencias();
   const estado = txt(query.estado);
   const modulo = txt(query.modulo);
+  const tipo = txt(query.tipo);
   const q = txt(query.q).toLowerCase();
-  if (estado && estado !== 'todos') items = items.filter((i) => i.clasificacion === estado);
+  if (estado && estado !== 'todos') {
+    // Admite tanto la clasificacion fina como el color del semaforo.
+    items = ['rojo', 'amarillo', 'verde'].includes(estado)
+      ? items.filter((i) => i.semaforo === estado)
+      : items.filter((i) => i.clasificacion === estado);
+  }
   if (modulo && modulo !== 'todos') items = items.filter((i) => i.modulo === modulo);
+  if (tipo && tipo !== 'todos') items = items.filter((i) => i.tipo === tipo);
   if (q) {
     items = items.filter((i) =>
       `${i.referencia} ${i.descripcion} ${i.concepto} ${i.ubicacion} ${i.responsable}`.toLowerCase().includes(q)
@@ -506,6 +590,8 @@ api.put('/api/configuracion', ({ cuerpo, usuario }) => {
     'notificar_por_correo',
     'nombre_centro',
     'zona',
+    'municipio',
+    'area_responsable',
   ];
   for (const [clave, valor] of Object.entries(cuerpo)) {
     if (permitidas.includes(clave)) guardarConfiguracion(clave, txt(valor, 200));
@@ -572,7 +658,8 @@ const EXPORTACIONES = {
   },
   equipos: {
     sql: `SELECT q.codigo, q.nombre, q.categoria, q.marca, q.modelo, q.serie, q.ubicacion,
-                 q.fecha_adquisicion, q.fecha_vencimiento, q.frecuencia_meses, q.estado, e.nombre AS responsable
+                 q.fecha_adquisicion, q.fecha_inicio, q.fecha_vencimiento, q.frecuencia_meses,
+                 q.estado, e.nombre AS responsable
           FROM equipos q LEFT JOIN empleados e ON e.id = q.responsable_id ORDER BY q.fecha_vencimiento`,
     columnas: [
       { campo: 'codigo', titulo: 'Codigo' },
@@ -583,10 +670,28 @@ const EXPORTACIONES = {
       { campo: 'serie', titulo: 'Serie' },
       { campo: 'ubicacion', titulo: 'Ubicacion' },
       { campo: 'fecha_adquisicion', titulo: 'Adquisicion' },
+      { campo: 'fecha_inicio', titulo: 'Inicio de vigencia' },
       { campo: 'fecha_vencimiento', titulo: 'Vencimiento' },
       { campo: 'frecuencia_meses', titulo: 'Frecuencia (meses)' },
       { campo: 'estado', titulo: 'Estado' },
       { campo: 'responsable', titulo: 'Responsable' },
+    ],
+  },
+  licencias: {
+    sql: `SELECT l.numero, e.rpe, e.nombre AS empleado, l.tipo, l.ambito, l.autoridad,
+                 l.fecha_inicio, l.fecha_vencimiento, l.restricciones, l.estado
+          FROM licencias l JOIN empleados e ON e.id = l.empleado_id ORDER BY l.fecha_vencimiento`,
+    columnas: [
+      { campo: 'numero', titulo: 'Numero de licencia' },
+      { campo: 'rpe', titulo: 'RPE' },
+      { campo: 'empleado', titulo: 'Empleado' },
+      { campo: 'tipo', titulo: 'Tipo' },
+      { campo: 'ambito', titulo: 'Ambito' },
+      { campo: 'autoridad', titulo: 'Autoridad emisora' },
+      { campo: 'fecha_inicio', titulo: 'Expedicion' },
+      { campo: 'fecha_vencimiento', titulo: 'Vencimiento' },
+      { campo: 'restricciones', titulo: 'Restricciones' },
+      { campo: 'estado', titulo: 'Estado' },
     ],
   },
   bitacora: {
@@ -609,22 +714,26 @@ api.get('/api/exportar/:modulo', ({ params }) => {
       referencia: i.referencia,
       descripcion: i.descripcion,
       concepto: i.concepto,
+      inicio: i.fecha_inicio ?? '',
       fecha: i.fecha,
       dias: i.dias,
       clasificacion: i.clasificacion,
+      semaforo: i.semaforo,
       ubicacion: i.ubicacion,
       responsable: i.responsable,
     }));
     return {
       __archivo: `vigencias_${hoyISO()}.csv`,
       contenido: aCSV(filas, [
-        { campo: 'modulo', titulo: 'Modulo' },
+        { campo: 'modulo', titulo: 'Elemento' },
         { campo: 'referencia', titulo: 'Referencia' },
         { campo: 'descripcion', titulo: 'Descripcion' },
         { campo: 'concepto', titulo: 'Concepto' },
-        { campo: 'fecha', titulo: 'Fecha de vencimiento' },
+        { campo: 'inicio', titulo: 'Fecha de inicio' },
+        { campo: 'fecha', titulo: 'Fecha de caducidad' },
         { campo: 'dias', titulo: 'Dias restantes' },
         { campo: 'clasificacion', titulo: 'Clasificacion' },
+        { campo: 'semaforo', titulo: 'Semaforo' },
         { campo: 'ubicacion', titulo: 'Ubicacion' },
         { campo: 'responsable', titulo: 'Responsable' },
       ]),

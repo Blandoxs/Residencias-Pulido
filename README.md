@@ -1,8 +1,24 @@
-# SIGEV — Sistema de Gestión de Equipo y Vigencias
+# SIGEV — Página de Gestión y Monitoreo de Caducidades en Equipos y Documentos de Seguridad
 
-Sistema web para el control del equipo de la empresa con temática institucional CFE:
-**gafetes del personal**, **extintores** y **equipo con duración/caducidad determinada**,
-con **avisos automáticos al administrador** cuando un producto está por vencer o ya venció.
+Plataforma web para la **Comisión Federal de Electricidad, Zona Parral, Chihuahua**, que registra
+y monitorea el **ciclo de vigencia completo** —de la fecha de inicio a la de caducidad— de los
+elementos de seguridad y la documentación del personal operativo, y **avisa con anticipación**
+al personal responsable antes de cada vencimiento.
+
+Proyecto de residencia profesional · Ingeniería en Sistemas Computacionales ·
+Instituto Tecnológico de Parral.
+
+## Los cinco elementos que vigila
+
+| Elemento | Fechas que controla | Aviso previo por omisión |
+|---|---|---|
+| **Gafetes de trabajo** | Emisión → vencimiento | 30 días (crítico 7) |
+| **Extintores** | Recarga → próxima recarga · prueba hidrostática | 30 días (crítico 7) |
+| **Botiquines de primeros auxilios** | Inicio → caducidad · revisión periódica | 30 días (crítico 7) |
+| **Arneses de seguridad** | Inicio → caducidad · inspección periódica | 45 días (crítico 15) |
+| **Licencias de conducir** | Expedición → vencimiento | 60 días (crítico 15) |
+
+Cada tipo tiene **su propia anticipación de aviso**, configurable desde el sistema.
 
 ---
 
@@ -68,24 +84,29 @@ Las demás cuentas se crean desde el módulo **Usuarios** eligiendo su perfil:
 
 | Módulo | Qué controla | Fechas que vigila |
 |---|---|---|
-| **Panel principal** | Indicadores, gráficas y pendientes inmediatos | — |
-| **Vigencias** | Concentrado único de todo lo que caduca | Todas |
-| **Notificaciones** | Bandeja de alertas generadas por el sistema | — |
-| **Gafetes** | Credenciales del personal, folio, tipo y nivel de acceso | Vigencia del gafete |
-| **Extintores** | Inventario contra incendio, tipo de agente, capacidad y ubicación | Próxima recarga y próxima prueba hidrostática |
-| **Equipo** | EPP, herramienta aislada, instrumentos e insumos | Caducidad y mantenimiento/calibración periódica |
-| **Personal** | Empleados (RPE, puesto, área, tipo de sangre, fotografía) | — |
+| **Panel** | Semáforo, reparto por tipo, línea de vencimientos y pendientes | — |
+| **Vigencias** | Concentrado único de todo lo que caduca, con filtro por semáforo y por tipo | Todas |
+| **Alertas** | Bandeja de avisos generados por el sistema | — |
+| **Gafetes** | Credenciales del personal: folio, tipo y nivel de acceso | Emisión → vencimiento |
+| **Extintores** | Agente, capacidad, ubicación y responsable | Recarga y prueba hidrostática |
+| **Botiquines y arneses** | Botiquines, arneses, EPP, herramienta aislada e instrumentos | Inicio → caducidad y revisión periódica |
+| **Licencias** | Licencias de conducir estatales y federales del personal | Expedición → vencimiento |
+| **Personal** | Trabajadores (RPE, puesto, área, tipo de sangre, fotografía) | — |
 | **Usuarios** | Cuentas de acceso y perfiles | — |
-| **Configuración** | Umbrales de aviso, datos del centro y correo | — |
+| **Configuración** | Anticipación por tipo, datos del centro y correo | — |
 | **Bitácora** | Auditoría de todas las operaciones | — |
 
 ### Funciones destacadas
 
+- **Semáforo de vigencias**: indicador de tres luces en el panel — rojo (vencido), amarillo
+  (próximo a vencer) y verde (vigente) — con el conteo en vivo de cada color.
+- **Línea de vencimientos**: los próximos 180 días en cuatro carriles (gafetes, extintores,
+  botiquines/arneses y licencias) con un marcador por concepto.
 - **Credencial imprimible**: en Gafetes → botón *Credencial* se genera el gafete con foto,
   RPE, puesto, tipo de sangre, folio, nivel de acceso y vigencia, listo para imprimir.
-- **Acciones rápidas**: *Renovar* gafete (12 meses), *Recarga* de extintor (reprograma la
-  siguiente a 12 meses) y *Mantenimiento* de equipo (registra la fecha de hoy y recalcula el
-  siguiente según su frecuencia).
+- **Acciones rápidas**: *Renovar* gafete (12 meses), *Recarga* de extintor (reprograma a 12
+  meses), *Mantenimiento* de equipo y *Refrendo* de licencia (3 años); cada una reinicia el
+  ciclo de avisos con la fecha nueva.
 - **Exportación a CSV** (compatible con Excel) en cada módulo.
 - **Fotografía del empleado**: se reduce en el navegador y se guarda en la base de datos.
 
@@ -93,14 +114,20 @@ Las demás cuentas se crean desde el módulo **Usuarios** eligiendo su perfil:
 
 ## 3. Cómo funcionan las alertas de vencimiento
 
-El motor de vigencias reúne **todos los conceptos con fecha** de los tres módulos y los clasifica:
+El motor de vigencias reúne **todos los conceptos con fecha** de los cinco elementos y los
+clasifica con el semáforo, calculando los días restantes a partir del rango
+*fecha de inicio → fecha de caducidad*:
 
-| Situación | Regla (configurable) | Color |
+| Semáforo | Situación | Regla |
 |---|---|---|
-| **Vigente** | Faltan más de 30 días | Verde |
-| **Próximo a vencer** | Faltan 30 días o menos | Ámbar |
-| **Crítico** | Faltan 7 días o menos | Naranja |
-| **Vencido** | La fecha ya pasó | Rojo |
+| 🟢 **Verde** | Vigente | Falta más que la anticipación configurada para su tipo |
+| 🟡 **Amarillo** | Próximo a vencer | Se entró en la anticipación del tipo (30, 45 o 60 días) |
+| 🟡 **Amarillo** | Crítico | Se entró en el umbral de urgencia (7 o 15 días) |
+| 🔴 **Rojo** | Vencido | La fecha ya pasó |
+
+La anticipación **no es única**: cada tipo de elemento tiene la suya y se edita en
+*Configuración → Anticipación por tipo de elemento*. Por ejemplo, una licencia de conducir
+avisa con 60 días de anticipación y un extintor con 30.
 
 La revisión se ejecuta:
 
@@ -192,11 +219,13 @@ No hay que tocar el código.
 | `usuarios` | Cuentas de acceso (contraseña con scrypt + sal) | — |
 | `sesiones` | Sesiones activas con caducidad | — |
 | `empleados` | Personal: RPE, puesto, área, contacto, foto | — |
-| `gafetes` | Folio, empleado, tipo, nivel de acceso, estado | `fecha_vencimiento` |
-| `extintores` | Código, agente, capacidad, ubicación, responsable | `fecha_prox_recarga`, `fecha_prox_hidrostatica` |
-| `equipos` | Código, categoría, marca, serie, responsable | `fecha_vencimiento`, mantenimiento por `frecuencia_meses` |
+| `gafetes` | Folio, empleado, tipo, nivel de acceso, estado | `fecha_emision` → `fecha_vencimiento` |
+| `extintores` | Código, agente, capacidad, ubicación, responsable | `fecha_recarga` → `fecha_prox_recarga`, `fecha_prox_hidrostatica` |
+| `equipos` | Botiquines, arneses y demás equipo; `tipo_alerta` define su aviso | `fecha_inicio` → `fecha_vencimiento`, revisión por `frecuencia_meses` |
+| `licencias` | Número, titular, tipo, ámbito, autoridad emisora, restricciones | `fecha_inicio` → `fecha_vencimiento` |
+| `tipos_alerta` | Los cinco elementos con su anticipación (`dias_proximo`, `dias_critico`) | — |
 | `notificaciones` | Alertas generadas, severidad y estado de lectura | — |
-| `configuracion` | Umbrales de aviso y datos del centro de trabajo | — |
+| `configuracion` | Datos del centro de trabajo y correo | — |
 | `bitacora` | Auditoría de altas, cambios, bajas y accesos | — |
 
 ---
@@ -214,7 +243,10 @@ Todas las rutas responden JSON y requieren sesión (cookie `sigev_sesion`, HttpO
 | `GET·POST·PUT·DELETE /api/gafetes[/:id]` | consulta / supervisor | Gafetes |
 | `GET /api/gafetes/:id/credencial` | consulta | Datos para imprimir la credencial |
 | `GET·POST·PUT·DELETE /api/extintores[/:id]` | consulta / supervisor | Extintores |
-| `GET·POST·PUT·DELETE /api/equipos[/:id]` | consulta / supervisor | Equipo con vigencia |
+| `GET·POST·PUT·DELETE /api/equipos[/:id]` | consulta / supervisor | Botiquines, arneses y demás equipo |
+| `GET·POST·PUT·DELETE /api/licencias[/:id]` | consulta / supervisor | Licencias de conducir |
+| `GET /api/tipos-alerta` · `PUT /api/tipos-alerta` | consulta / admin | Anticipación de aviso por tipo de elemento |
+| `GET /api/resumen` | consulta | Semáforo y alertas sin leer (cinta de estado) |
 | `GET /api/notificaciones` · `POST /api/notificaciones/:id/leer` · `POST /api/notificaciones/leer-todas` | consulta | Bandeja de alertas |
 | `POST /api/alertas/revisar` | consulta | Ejecuta el motor de vencimientos |
 | `GET·POST·PUT·DELETE /api/usuarios[/:id]` | admin | Cuentas del sistema |
@@ -258,3 +290,20 @@ Todas las rutas responden JSON y requieren sesión (cookie `sigev_sesion`, HttpO
 Toda la información vive en `datos/sigev.db`. Para respaldar, **detenga el servidor** y copie
 la carpeta `datos/` completa (incluye los archivos `-wal` y `-shm`). Para restaurar, reemplácela
 y vuelva a iniciar.
+
+---
+
+## 10. Correspondencia con el anteproyecto
+
+| Compromiso del anteproyecto | Dónde se cumple |
+|---|---|
+| Registrar extintores, botiquines, arneses, licencias de conducir y gafetes | Módulos *Gafetes*, *Extintores*, *Botiquines y arneses* y *Licencias* |
+| Variables: número de empleado, nombre, tipo de elemento, fecha de inicio, fecha de caducidad y área de adscripción | Tabla `empleados` (RPE, nombre, departamento) y campos `fecha_inicio` / `fecha_vencimiento` de cada elemento |
+| Interfaz web intuitiva para registrar, consultar y actualizar | Alta, cambio, baja y búsqueda en cada módulo, con acciones rápidas de renovación |
+| Base de datos relacional | SQLite con 10 tablas y llaves foráneas (sección 5) |
+| Cálculo automático de días restantes con base en el rango de fechas | `src/vigencias.js` — columna *Días* en Vigencias y en el panel |
+| Notificaciones preventivas **configurables según el tipo de elemento** | Tabla `tipos_alerta`, editable en *Configuración → Anticipación por tipo de elemento* |
+| Alertas automáticas que notifican con anticipación | `src/alertas.js`: revisión al arrancar y cada 6 h, campana, bandeja y correo opcional |
+| Indicadores visuales de semáforo: verde, amarillo y rojo | Componente *Semáforo de vigencias* del panel y banderines en todas las tablas |
+| Diseño responsivo en distintos dispositivos | Verificado en 1440 px y 375 px; el rail se convierte en menú lateral |
+| Documentación técnica y manual de usuario | Este documento (secciones 1 a 9) |

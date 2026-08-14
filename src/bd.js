@@ -138,11 +138,52 @@ CREATE TABLE IF NOT EXISTS configuracion (
   valor TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS licencias (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  numero            TEXT NOT NULL UNIQUE,
+  empleado_id       INTEGER NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
+  tipo              TEXT NOT NULL DEFAULT 'Chofer',
+  ambito            TEXT NOT NULL DEFAULT 'Estatal',
+  autoridad         TEXT NOT NULL DEFAULT '',
+  fecha_inicio      TEXT NOT NULL,
+  fecha_vencimiento TEXT NOT NULL,
+  restricciones     TEXT NOT NULL DEFAULT '',
+  estado            TEXT NOT NULL DEFAULT 'Vigente',
+  observaciones     TEXT NOT NULL DEFAULT '',
+  creado_en         TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+-- Umbrales de aviso configurables por tipo de elemento
+CREATE TABLE IF NOT EXISTS tipos_alerta (
+  clave        TEXT PRIMARY KEY,
+  nombre       TEXT NOT NULL,
+  dias_proximo INTEGER NOT NULL DEFAULT 30,
+  dias_critico INTEGER NOT NULL DEFAULT 7,
+  orden        INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_gafetes_venc     ON gafetes(fecha_vencimiento);
 CREATE INDEX IF NOT EXISTS idx_extintores_venc  ON extintores(fecha_prox_recarga);
 CREATE INDEX IF NOT EXISTS idx_equipos_venc     ON equipos(fecha_vencimiento);
+CREATE INDEX IF NOT EXISTS idx_licencias_venc   ON licencias(fecha_vencimiento);
 CREATE INDEX IF NOT EXISTS idx_notif_leida      ON notificaciones(leida, creada_en);
 `);
+
+/* ------------------------------------------------------------------ */
+/* Migraciones para bases de datos creadas con versiones anteriores    */
+/* ------------------------------------------------------------------ */
+
+function agregarColumna(tabla, columna, definicion) {
+  const columnas = bd.prepare(`PRAGMA table_info(${tabla})`).all();
+  if (!columnas.some((c) => c.name === columna)) {
+    bd.exec(`ALTER TABLE ${tabla} ADD COLUMN ${columna} ${definicion}`);
+  }
+}
+
+// El anteproyecto exige registrar la fecha de inicio de la vigencia, no solo
+// la de caducidad. En gafetes es la emision y en extintores la ultima recarga.
+agregarColumna('equipos', 'fecha_inicio', 'TEXT');
+agregarColumna('equipos', 'tipo_alerta', "TEXT NOT NULL DEFAULT 'equipo'");
 
 /* ------------------------------------------------------------------ */
 /* Configuracion por defecto                                           */
@@ -153,12 +194,52 @@ const CONFIG_DEFECTO = {
   dias_proximos: '30',
   correo_administrador: '',
   notificar_por_correo: '0',
-  nombre_centro: 'Centro de Trabajo CFE',
-  zona: 'Zona de Distribucion',
+  nombre_centro: 'CFE Zona Parral',
+  zona: 'Division de Distribucion Norte',
+  municipio: 'Hidalgo del Parral, Chihuahua',
+  area_responsable: 'Seguridad e Higiene',
 };
 
 const insConfig = bd.prepare('INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)');
 for (const [clave, valor] of Object.entries(CONFIG_DEFECTO)) insConfig.run(clave, valor);
+
+/**
+ * Tipos de elemento del anteproyecto, cada uno con su propia anticipacion
+ * de aviso. Son los cinco elementos comprometidos mas una categoria general.
+ */
+const TIPOS_DEFECTO = [
+  ['gafete', 'Gafetes de trabajo', 30, 7, 1],
+  ['extintor', 'Extintores', 30, 7, 2],
+  ['botiquin', 'Botiquines de primeros auxilios', 30, 7, 3],
+  ['arnes', 'Arneses de seguridad', 45, 15, 4],
+  ['licencia', 'Licencias de conducir', 60, 15, 5],
+  ['equipo', 'Otro equipo de seguridad', 30, 7, 6],
+];
+
+const insTipo = bd.prepare(
+  'INSERT OR IGNORE INTO tipos_alerta (clave, nombre, dias_proximo, dias_critico, orden) VALUES (?, ?, ?, ?, ?)'
+);
+for (const t of TIPOS_DEFECTO) insTipo.run(...t);
+
+/** Catalogo de tipos de elemento con sus umbrales. */
+export function tiposAlerta() {
+  return bd.prepare('SELECT * FROM tipos_alerta ORDER BY orden').all();
+}
+
+/** Mapa clave -> {proximo, critico} usado por el motor de vigencias. */
+export function umbralesPorTipo() {
+  const mapa = {};
+  for (const t of tiposAlerta()) mapa[t.clave] = { proximo: t.dias_proximo, critico: t.dias_critico };
+  return mapa;
+}
+
+export function guardarTipoAlerta(clave, proximo, critico) {
+  bd.prepare('UPDATE tipos_alerta SET dias_proximo = ?, dias_critico = ? WHERE clave = ?').run(
+    Math.max(1, Number(proximo) || 30),
+    Math.max(0, Number(critico) || 7),
+    clave
+  );
+}
 
 export function leerConfiguracion() {
   const filas = bd.prepare('SELECT clave, valor FROM configuracion').all();
@@ -257,12 +338,13 @@ function sembrar() {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
 
   const empleados = [
-    ['RPE10245', 'Juan Carlos Ramirez Soto', 'Linero de Distribucion', 'Distribucion', 'Zona Centro', 'jc.ramirez@cfe.mx', '8112345678', 'O+'],
-    ['RPE10312', 'Maria Fernanda Lopez Cruz', 'Ingeniera de Seguridad', 'Seguridad e Higiene', 'Zona Centro', 'mf.lopez@cfe.mx', '8113456789', 'A+'],
-    ['RPE10488', 'Roberto Gutierrez Mendoza', 'Tecnico Electricista', 'Mantenimiento', 'Subestacion Norte', 'r.gutierrez@cfe.mx', '8114567890', 'B+'],
-    ['RPE10520', 'Ana Sofia Herrera Vazquez', 'Analista Administrativo', 'Administracion', 'Oficinas Centrales', 'as.herrera@cfe.mx', '8115678901', 'O-'],
-    ['RPE10634', 'Luis Alberto Nava Trevino', 'Supervisor de Brigada', 'Distribucion', 'Zona Sur', 'la.nava@cfe.mx', '8116789012', 'AB+'],
-    ['RPE10711', 'Patricia Elena Dominguez Rios', 'Jefa de Almacen', 'Almacen', 'Zona Centro', 'pe.dominguez@cfe.mx', '8117890123', 'A-'],
+    ['RPE10245', 'Juan Carlos Ramirez Soto', 'Linero de Distribucion', 'Distribucion', 'Zona Parral', 'jc.ramirez@cfe.mx', '6271234567', 'O+'],
+    ['RPE10312', 'Maria Fernanda Lopez Cruz', 'Ingeniera de Seguridad', 'Seguridad e Higiene', 'Zona Parral', 'mf.lopez@cfe.mx', '6272345678', 'A+'],
+    ['RPE10488', 'Roberto Gutierrez Mendoza', 'Tecnico Electricista', 'Mantenimiento', 'Subestacion Parral', 'r.gutierrez@cfe.mx', '6273456789', 'B+'],
+    ['RPE10520', 'Ana Sofia Herrera Vazquez', 'Analista de Sistemas', 'Departamento TICS', 'Oficinas Zona Parral', 'as.herrera@cfe.mx', '6274567890', 'O-'],
+    ['RPE10634', 'Luis Alberto Nava Trevino', 'Supervisor de Brigada', 'Distribucion', 'Zona Parral', 'la.nava@cfe.mx', '6275678901', 'AB+'],
+    ['RPE10711', 'Patricia Elena Dominguez Rios', 'Jefa de Almacen', 'Almacen', 'Zona Parral', 'pe.dominguez@cfe.mx', '6276789012', 'A-'],
+    ['RPE10802', 'Sergio Ivan Carrasco Duarte', 'Operador de Vehiculo Grua', 'Distribucion', 'Zona Parral', 'si.carrasco@cfe.mx', '6277890123', 'O+'],
   ];
   for (const e of empleados) insEmpleado.run(...e);
 
@@ -284,30 +366,44 @@ function sembrar() {
      fecha_prox_recarga, fecha_prueba_hidrostatica, fecha_prox_hidrostatica, responsable_id, estado, observaciones)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const extintores = [
-    ['EXT-001', 'PQS', 9, 'Badger', 'Pasillo principal, planta baja', 'Oficinas Centrales', sumarDias(hoy, -1800), sumarDias(hoy, -370), sumarDias(hoy, -5), sumarDias(hoy, -1100), sumarMeses(hoy, 14), 2, 'Operativo', 'Recarga vencida'],
-    ['EXT-002', 'CO2', 4.5, 'Amerex', 'Cuarto de tableros', 'Subestacion Norte', sumarDias(hoy, -1200), sumarDias(hoy, -350), sumarDias(hoy, 15), sumarDias(hoy, -900), sumarMeses(hoy, 20), 3, 'Operativo', ''],
-    ['EXT-003', 'PQS', 6, 'Extinsa', 'Almacen general', 'Zona Centro', sumarDias(hoy, -900), sumarDias(hoy, -300), sumarDias(hoy, 65), sumarDias(hoy, -600), sumarMeses(hoy, 30), 6, 'Operativo', ''],
-    ['EXT-004', 'Agua a presion', 10, 'Badger', 'Taller de mantenimiento', 'Zona Sur', sumarDias(hoy, -1500), sumarDias(hoy, -340), sumarDias(hoy, 25), sumarDias(hoy, -1400), sumarDias(hoy, 40), 5, 'Operativo', 'Proxima prueba hidrostatica cercana'],
-    ['EXT-005', 'Espuma AFFF', 9, 'Amerex', 'Area de vehiculos', 'Zona Centro', sumarDias(hoy, -700), sumarDias(hoy, -100), sumarDias(hoy, 265), sumarDias(hoy, -700), sumarMeses(hoy, 48), 1, 'Operativo', ''],
-    ['EXT-006', 'PQS', 4.5, 'Extinsa', 'Cuarto de control', 'Subestacion Norte', sumarDias(hoy, -2000), sumarDias(hoy, -380), sumarDias(hoy, -20), sumarDias(hoy, -2000), sumarDias(hoy, -60), 3, 'Fuera de servicio', 'Enviado a taller'],
+    ['EXT-001', 'PQS', 9, 'Badger', 'Pasillo principal, planta baja', 'Oficinas Zona Parral', sumarDias(hoy, -1800), sumarDias(hoy, -370), sumarDias(hoy, -5), sumarDias(hoy, -1100), sumarMeses(hoy, 14), 2, 'Operativo', 'Recarga vencida'],
+    ['EXT-002', 'CO2', 4.5, 'Amerex', 'Cuarto de tableros', 'Subestacion Parral', sumarDias(hoy, -1200), sumarDias(hoy, -350), sumarDias(hoy, 15), sumarDias(hoy, -900), sumarMeses(hoy, 20), 3, 'Operativo', ''],
+    ['EXT-003', 'PQS', 6, 'Extinsa', 'Almacen general', 'Zona Parral', sumarDias(hoy, -900), sumarDias(hoy, -300), sumarDias(hoy, 65), sumarDias(hoy, -600), sumarMeses(hoy, 30), 6, 'Operativo', ''],
+    ['EXT-004', 'Agua a presion', 10, 'Badger', 'Taller de mantenimiento', 'Zona Parral', sumarDias(hoy, -1500), sumarDias(hoy, -340), sumarDias(hoy, 25), sumarDias(hoy, -1400), sumarDias(hoy, 40), 5, 'Operativo', 'Proxima prueba hidrostatica cercana'],
+    ['EXT-005', 'Espuma AFFF', 9, 'Amerex', 'Patio de vehiculos', 'Zona Parral', sumarDias(hoy, -700), sumarDias(hoy, -100), sumarDias(hoy, 265), sumarDias(hoy, -700), sumarMeses(hoy, 48), 1, 'Operativo', ''],
+    ['EXT-006', 'PQS', 4.5, 'Extinsa', 'Cuarto de control', 'Subestacion Parral', sumarDias(hoy, -2000), sumarDias(hoy, -380), sumarDias(hoy, -20), sumarDias(hoy, -2000), sumarDias(hoy, -60), 3, 'Fuera de servicio', 'Enviado a taller'],
   ];
   for (const e of extintores) insExtintor.run(...e);
 
   const insEquipo = bd.prepare(`INSERT INTO equipos
-    (codigo, nombre, categoria, marca, modelo, serie, ubicacion, responsable_id,
-     fecha_adquisicion, fecha_vencimiento, frecuencia_meses, fecha_ultimo_mantenimiento, estado, observaciones)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    (codigo, nombre, categoria, tipo_alerta, marca, modelo, serie, ubicacion, responsable_id,
+     fecha_adquisicion, fecha_inicio, fecha_vencimiento, frecuencia_meses, fecha_ultimo_mantenimiento, estado, observaciones)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const equipos = [
-    ['EQ-0001', 'Guantes dielectricos clase 2', 'Equipo de proteccion personal', 'Salisbury', 'E214B', 'SLB-4471', 'Brigada Distribucion', 1, sumarDias(hoy, -400), sumarDias(hoy, 3), 6, sumarDias(hoy, -180), 'En servicio', 'Prueba dielectrica semestral'],
-    ['EQ-0002', 'Arnes de cuerpo completo', 'Equipo de proteccion personal', '3M', 'Protecta AB17530', '3M-99120', 'Brigada Zona Sur', 5, sumarDias(hoy, -800), sumarDias(hoy, 60), 12, sumarDias(hoy, -300), 'En servicio', ''],
-    ['EQ-0003', 'Detector de tension 34.5 kV', 'Instrumento de medicion', 'Fluke', '1AC-E1', 'FLK-33021', 'Subestacion Norte', 3, sumarDias(hoy, -600), sumarDias(hoy, -9), 12, sumarDias(hoy, -370), 'En servicio', 'Calibracion vencida'],
-    ['EQ-0004', 'Botiquin de primeros auxilios', 'Insumo con caducidad', 'Generico', 'Tipo B', 'BOT-014', 'Oficinas Centrales', 4, sumarDias(hoy, -200), sumarDias(hoy, 20), 0, null, 'En servicio', 'Revisar medicamentos'],
-    ['EQ-0005', 'Multimetro industrial', 'Instrumento de medicion', 'Fluke', '87V', 'FLK-87221', 'Taller de mantenimiento', 3, sumarDias(hoy, -1000), sumarDias(hoy, 120), 12, sumarDias(hoy, -240), 'En servicio', ''],
-    ['EQ-0006', 'Casco dielectrico clase E', 'Equipo de proteccion personal', 'MSA', 'V-Gard', 'MSA-7712', 'Brigada Distribucion', 1, sumarDias(hoy, -1100), sumarDias(hoy, 340), 0, null, 'En servicio', ''],
-    ['EQ-0007', 'Pertiga telescopica 10 m', 'Herramienta aislada', 'Hastings', 'H-1000', 'HST-2214', 'Zona Sur', 5, sumarDias(hoy, -1500), sumarDias(hoy, 28), 12, sumarDias(hoy, -337), 'En servicio', ''],
-    ['EQ-0008', 'Extintor portatil de respaldo', 'Insumo con caducidad', 'Badger', 'B5', 'BDG-5521', 'Almacen general', 6, sumarDias(hoy, -300), sumarDias(hoy, 90), 12, null, 'En almacen', ''],
+    ['BOT-001', 'Botiquin de primeros auxilios tipo B', 'Botiquin de primeros auxilios', 'botiquin', 'Generico', 'Tipo B', 'BOT-014', 'Oficinas Zona Parral', 4, sumarDias(hoy, -200), sumarDias(hoy, -180), sumarDias(hoy, 20), 6, sumarDias(hoy, -180), 'En servicio', 'Revisar caducidad de medicamentos'],
+    ['BOT-002', 'Botiquin de brigada de emergencia', 'Botiquin de primeros auxilios', 'botiquin', 'Generico', 'Tipo C', 'BOT-021', 'Vehiculo grua 44-12', 7, sumarDias(hoy, -300), sumarDias(hoy, -240), sumarDias(hoy, -3), 6, sumarDias(hoy, -240), 'En servicio', 'Insumos caducados'],
+    ['ARN-001', 'Arnes de cuerpo completo 4 anillos', 'Arnes de seguridad', 'arnes', '3M', 'Protecta AB17530', '3M-99120', 'Brigada Zona Parral', 5, sumarDias(hoy, -800), sumarDias(hoy, -370), sumarDias(hoy, 40), 12, sumarDias(hoy, -370), 'En servicio', 'Inspeccion anual'],
+    ['ARN-002', 'Arnes dielectrico con linea de vida', 'Arnes de seguridad', 'arnes', 'MSA', 'Workman', 'MSA-3320', 'Brigada Distribucion', 1, sumarDias(hoy, -600), sumarDias(hoy, -350), sumarDias(hoy, 12), 12, sumarDias(hoy, -350), 'En servicio', ''],
+    ['ARN-003', 'Arnes de posicionamiento', 'Arnes de seguridad', 'arnes', '3M', 'Delta II', '3M-77410', 'Subestacion Parral', 3, sumarDias(hoy, -1200), sumarDias(hoy, -420), sumarDias(hoy, -55), 12, sumarDias(hoy, -420), 'Fuera de servicio', 'Costura danada, dado de baja tecnica'],
+    ['EQ-0001', 'Guantes dielectricos clase 2', 'Equipo de proteccion personal', 'equipo', 'Salisbury', 'E214B', 'SLB-4471', 'Brigada Distribucion', 1, sumarDias(hoy, -400), sumarDias(hoy, -180), sumarDias(hoy, 3), 6, sumarDias(hoy, -180), 'En servicio', 'Prueba dielectrica semestral'],
+    ['EQ-0002', 'Detector de tension 34.5 kV', 'Instrumento de medicion', 'equipo', 'Fluke', '1AC-E1', 'FLK-33021', 'Subestacion Parral', 3, sumarDias(hoy, -600), sumarDias(hoy, -370), sumarDias(hoy, -9), 12, sumarDias(hoy, -370), 'En servicio', 'Calibracion vencida'],
+    ['EQ-0003', 'Casco dielectrico clase E', 'Equipo de proteccion personal', 'equipo', 'MSA', 'V-Gard', 'MSA-7712', 'Brigada Distribucion', 1, sumarDias(hoy, -1100), sumarDias(hoy, -1100), sumarDias(hoy, 340), 0, null, 'En servicio', ''],
+    ['EQ-0004', 'Pertiga telescopica 10 m', 'Herramienta aislada', 'equipo', 'Hastings', 'H-1000', 'HST-2214', 'Zona Parral', 5, sumarDias(hoy, -1500), sumarDias(hoy, -337), sumarDias(hoy, 28), 12, sumarDias(hoy, -337), 'En servicio', ''],
+    ['EQ-0005', 'Multimetro industrial', 'Instrumento de medicion', 'equipo', 'Fluke', '87V', 'FLK-87221', 'Taller de mantenimiento', 3, sumarDias(hoy, -1000), sumarDias(hoy, -240), sumarDias(hoy, 120), 12, sumarDias(hoy, -240), 'En servicio', ''],
   ];
   for (const e of equipos) insEquipo.run(...e);
+
+  const insLicencia = bd.prepare(`INSERT INTO licencias
+    (numero, empleado_id, tipo, ambito, autoridad, fecha_inicio, fecha_vencimiento, restricciones, estado, observaciones)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const licencias = [
+    ['LIC-CHIH-884512', 1, 'Chofer', 'Estatal', 'Gobierno del Estado de Chihuahua', sumarDias(hoy, -1000), sumarDias(hoy, -18), 'Uso de lentes', 'Vigente', 'Vencida, no puede operar vehiculo oficial'],
+    ['LIC-CHIH-902341', 5, 'Chofer', 'Estatal', 'Gobierno del Estado de Chihuahua', sumarDias(hoy, -700), sumarDias(hoy, 22), '', 'Vigente', ''],
+    ['LIC-FED-B-114520', 7, 'Federal tipo B', 'Federal', 'Secretaria de Infraestructura, Comunicaciones y Transportes', sumarDias(hoy, -900), sumarDias(hoy, 48), '', 'Vigente', 'Requerida para operar la grua'],
+    ['LIC-CHIH-771203', 3, 'Automovilista', 'Estatal', 'Gobierno del Estado de Chihuahua', sumarDias(hoy, -1400), sumarDias(hoy, 190), '', 'Vigente', ''],
+    ['LIC-CHIH-812077', 6, 'Automovilista', 'Estatal', 'Gobierno del Estado de Chihuahua', sumarDias(hoy, -500), sumarDias(hoy, 320), '', 'Vigente', ''],
+  ];
+  for (const l of licencias) insLicencia.run(...l);
 
   bitacora('sistema', 'Instalacion', 'Sistema', 'Base de datos creada con informacion de demostracion');
   console.log('  Base de datos inicializada con datos de demostracion.');

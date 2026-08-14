@@ -150,7 +150,12 @@ async function pantallaCatalogo(cont, cfg) {
 /* Panel principal                                                     */
 /* ================================================================== */
 
-const NOMBRE_MODULO = { gafetes: 'Gafetes', extintores: 'Extintores', equipos: 'Equipo' };
+const NOMBRE_MODULO = {
+  gafetes: 'Gafetes',
+  extintores: 'Extintores',
+  equipos: 'Botiquin/arnes',
+  licencias: 'Licencias',
+};
 
 /** Linea de tiempo de 180 dias con un marcador por concepto. */
 function lineaTiempo(items) {
@@ -172,10 +177,57 @@ function lineaTiempo(items) {
   };
 
   return `<div class="linea-tiempo">
-    ${carril('gafetes')}${carril('extintores')}${carril('equipos')}
+    ${carril('gafetes')}${carril('extintores')}${carril('equipos')}${carril('licencias')}
     <div class="escala">
       <span>Hoy</span><span>45 d</span><span>90 d</span><span>135 d</span><span>180 d</span>
     </div>
+  </div>`;
+}
+
+/**
+ * Semaforo de vigencias: el indicador visual comprometido en el anteproyecto
+ * (verde vigente, amarillo proximo a vencer, rojo vencido).
+ */
+function semaforo(r) {
+  const lampara = (color, valor) =>
+    `<div class="semaforo__lampara semaforo__lampara--${color} ${valor > 0 ? 'encendida' : ''}">${valor}</div>`;
+
+  const renglon = (color, titulo, detalle, valor) =>
+    `<div class="semaforo__renglon">
+      <span class="semaforo__punto semaforo__punto--${color}"></span>
+      <span class="semaforo__texto"><strong>${esc(titulo)}</strong><span>${esc(detalle)}</span></span>
+      <span class="semaforo__cifra">${valor}</span>
+    </div>`;
+
+  return `<div class="semaforo">
+    <div class="semaforo__poste">
+      ${lampara('rojo', r.rojo)}${lampara('amarillo', r.amarillo)}${lampara('verde', r.verde)}
+    </div>
+    <div class="semaforo__lectura">
+      ${renglon('rojo', 'Vencido', 'Fuera de vigencia, retirar de uso', r.rojo)}
+      ${renglon('amarillo', 'Proximo a vencer', `Dentro de la anticipacion configurada (${r.critico} en estado critico)`, r.amarillo)}
+      ${renglon('verde', 'Vigente', 'Dentro de su periodo de validez', r.verde)}
+    </div>
+  </div>`;
+}
+
+/** Matriz de los cinco tipos de elemento con su anticipacion de aviso. */
+function matrizTipos(porTipo) {
+  return `<div class="matriz">
+    <div class="matriz__fila matriz__fila--cabeza">
+      <span>Tipo de elemento</span><span>Aviso</span><span>R</span><span>A</span><span>V</span>
+    </div>
+    ${porTipo
+      .map(
+        (t) => `<div class="matriz__fila">
+          <span class="matriz__nombre">${esc(t.nombre)}</span>
+          <span class="matriz__umbral">${t.dias_proximo}/${t.dias_critico} d</span>
+          <span class="matriz__celda matriz__celda--rojo" data-valor="${t.rojo}">${t.rojo}</span>
+          <span class="matriz__celda matriz__celda--amarillo" data-valor="${t.amarillo}">${t.amarillo}</span>
+          <span class="matriz__celda matriz__celda--verde" data-valor="${t.verde}">${t.verde}</span>
+        </div>`
+      )
+      .join('')}
   </div>`;
 }
 
@@ -193,16 +245,31 @@ export async function panel(cont) {
   const maxMes = Math.max(1, ...d.meses.map((m) => m.total));
 
   cont.innerHTML = `
-    ${rotulo('Panel de control', `${d.configuracion.nombre_centro} · ${d.configuracion.zona}`, `
-      <button class="boton" id="btn-ir-vigencias">Ver vigencias</button>
-      <button class="boton boton--primario" id="btn-revisar-panel">${icono('refrescar', 'ico--sm')} Revisar</button>`)}
+    ${rotulo(
+      'Panel de control',
+      `${d.configuracion.nombre_centro} · ${d.configuracion.zona} · ${d.configuracion.municipio ?? ''}`,
+      `<button class="boton" id="btn-ir-vigencias">Ver vigencias</button>
+       <button class="boton boton--primario" id="btn-revisar-panel">${icono('refrescar', 'ico--sm')} Revisar</button>`
+    )}
 
     <div class="cifras">
+      ${cifra(d.totales.empleados, 'Trabajadores', 'Personal operativo')}
+      ${cifra(d.resumen.total, 'Vigencias', 'Conceptos vigilados', 'azul')}
       ${cifra(d.resumen.vencido ?? 0, 'Vencidos', 'Atencion inmediata', 'vencido')}
-      ${cifra(d.resumen.critico ?? 0, 'Criticos', `${d.umbrales.critico} dias o menos`, 'critico')}
-      ${cifra(d.resumen.proximo ?? 0, 'Por vencer', `Hasta ${d.umbrales.proximo} dias`, 'proximo')}
-      ${cifra(d.resumen.vigente ?? 0, 'Vigentes', `De ${d.resumen.total} conceptos`, 'vigente')}
-      ${cifra(d.totales.notificaciones, 'Alertas', 'Sin leer', 'azul')}
+      ${cifra((d.resumen.critico ?? 0) + (d.resumen.proximo ?? 0), 'Por vencer', 'Dentro del aviso previo', 'proximo')}
+      ${cifra(d.totales.notificaciones, 'Alertas', 'Sin leer', 'critico')}
+    </div>
+
+    <div class="rejilla rejilla--2" style="margin-bottom:14px">
+      <div class="hoja hoja--acento">
+        <h3 class="titulo-bloque">Semaforo de vigencias <small>${d.resumen.total} conceptos</small></h3>
+        ${semaforo(d.resumen)}
+      </div>
+
+      <div class="hoja hoja--acento">
+        <h3 class="titulo-bloque">Reparto por tipo de elemento <small>R / A / V</small></h3>
+        ${matrizTipos(d.porTipo)}
+      </div>
     </div>
 
     <div class="rejilla rejilla--2" style="margin-bottom:14px">
@@ -225,26 +292,6 @@ export async function panel(cont) {
             .join('')}
         </div>
       </div>
-    </div>
-
-    <div class="rejilla rejilla--3" style="margin-bottom:14px">
-      ${['gafetes', 'extintores', 'equipos']
-        .map((clave) => {
-          const m = d.porModulo[clave];
-          const barra = (tipo, valor) =>
-            `<div class="barra-fila"><span>${esc(tipo)}</span>
-              <div class="barra-pista"><div class="barra-valor barra-valor--${tipo}" style="width:${
-              m.total ? (valor / m.total) * 100 : 0
-            }%"></div></div><b>${valor}</b></div>`;
-          return `<div class="hoja">
-            <h3 class="titulo-bloque">${esc(NOMBRE_MODULO[clave])} <small>${d.totales[clave]} reg.</small></h3>
-            <div class="barras">
-              ${barra('vencido', m.vencido)}${barra('critico', m.critico)}
-              ${barra('proximo', m.proximo)}${barra('vigente', m.vigente)}
-            </div>
-          </div>`;
-        })
-        .join('')}
     </div>
 
     <h3 class="titulo-bloque">Requieren atencion inmediata</h3>
@@ -277,27 +324,27 @@ export async function panel(cont) {
 /* ================================================================== */
 
 export async function vigencias(cont) {
-  const filtros = { estado: 'todos', modulo: 'todos', q: '' };
+  const filtros = { estado: 'todos', modulo: 'todos', tipo: 'todos', q: '' };
 
   cont.innerHTML = `
-    ${rotulo('Control de vigencias', 'Concentrado de todos los conceptos con fecha de caducidad.', `
+    ${rotulo('Control de vigencias', 'Concentrado de los cinco elementos con fecha de caducidad.', `
       ${btnExportar}
       <button class="boton boton--primario" id="btn-revisar-v">${icono('refrescar', 'ico--sm')} Generar alertas</button>`)}
     <div class="herramientas">
       ${icono('buscar', 'ico--sm')}
-      <input type="search" id="buscador" placeholder="Referencia, equipo, ubicacion..." />
-      <select data-filtro="modulo">
-        <option value="todos">Todos los modulos</option>
-        <option value="gafetes">Gafetes</option>
-        <option value="extintores">Extintores</option>
-        <option value="equipos">Equipo</option>
+      <input type="search" id="buscador" placeholder="Referencia, equipo, trabajador..." />
+      <select data-filtro="tipo">
+        <option value="todos">Todos los elementos</option>
+        ${(estado.catalogos.tiposAlerta ?? [])
+          .map((t) => `<option value="${esc(t.clave)}">${esc(t.nombre)}</option>`)
+          .join('')}
       </select>
       <select data-filtro="estado">
-        <option value="todos">Todas las situaciones</option>
-        <option value="vencido">Vencidos</option>
-        <option value="critico">Criticos</option>
-        <option value="proximo">Por vencer</option>
-        <option value="vigente">Vigentes</option>
+        <option value="todos">Todo el semaforo</option>
+        <option value="rojo">🔴 Rojo · vencidos</option>
+        <option value="amarillo">🟡 Amarillo · por vencer</option>
+        <option value="verde">🟢 Verde · vigentes</option>
+        <option value="critico">Solo criticos</option>
       </select>
       <span class="conteo" id="conteo"></span>
     </div>
@@ -305,20 +352,21 @@ export async function vigencias(cont) {
 
   async function cargar() {
     const d = await api.obtener(
-      `/api/vigencias?estado=${filtros.estado}&modulo=${filtros.modulo}&q=${encodeURIComponent(filtros.q)}`
+      `/api/vigencias?estado=${filtros.estado}&modulo=${filtros.modulo}&tipo=${filtros.tipo}&q=${encodeURIComponent(filtros.q)}`
     );
     cont.querySelector('#conteo').textContent =
-      `${d.items.length} conceptos · ${d.resumen.vencido} venc. · ${d.resumen.critico} crit. · ${d.resumen.proximo} prox.`;
+      `${d.items.length} conceptos · rojo ${d.resumen.rojo} · amarillo ${d.resumen.amarillo} · verde ${d.resumen.verde}`;
     cont.querySelector('#tabla-vigencias').innerHTML = tabla(
       [
-        { titulo: 'Modulo', render: (i) => marca('neutro', i.modulo_nombre) },
+        { titulo: 'Elemento', render: (i) => marca('neutro', i.modulo_nombre) },
         { titulo: 'Referencia', render: (i) => celdaClave(i.referencia, i.descripcion) },
         { titulo: 'Concepto', campo: 'concepto' },
-        { titulo: 'Ubicacion', campo: 'ubicacion' },
-        { titulo: 'Responsable', campo: 'responsable' },
-        { titulo: 'Fecha', render: (i) => fecha(i.fecha), clase: 'fecha' },
+        { titulo: 'Responsable', render: (i) => `${esc(i.responsable)}<span class="sub">${esc(i.ubicacion)}</span>` },
+        { titulo: 'Inicio', render: (i) => fecha(i.fecha_inicio), clase: 'fecha' },
+        { titulo: 'Caducidad', render: (i) => fecha(i.fecha), clase: 'fecha' },
         { titulo: 'Dias', render: (i) => i.dias, clase: 'num' },
-        { titulo: 'Situacion', render: (i) => marca(i.clasificacion, i.etiqueta) },
+        { titulo: 'Aviso', render: (i) => `<span class="matriz__umbral">${i.umbral.proximo}/${i.umbral.critico} d</span>`, clase: 'num' },
+        { titulo: 'Semaforo', render: (i) => marca(i.clasificacion, i.etiqueta) },
       ],
       d.items,
       'Sin coincidencias'
@@ -421,7 +469,7 @@ export async function notificaciones(cont) {
 /* ================================================================== */
 
 function credencialHTML(g, cfg) {
-  const v = clasificar(g.fecha_vencimiento);
+  const v = clasificar(g.fecha_vencimiento, 'gafete');
   return `<div class="credencial">
     <div class="credencial__cabeza">
       <img src="img/cfe-blanco.svg" alt="CFE" />
@@ -464,7 +512,7 @@ export async function gafetes(cont) {
       { titulo: 'Tipo', render: (g) => `${esc(g.tipo)}<span class="sub">${esc(g.nivel_acceso)}</span>` },
       { titulo: 'Emision', render: (g) => fecha(g.fecha_emision), clase: 'fecha' },
       { titulo: 'Vence', render: (g) => fecha(g.fecha_vencimiento), clase: 'fecha' },
-      { titulo: 'Vigencia', render: (g) => marcaFecha(g.fecha_vencimiento) },
+      { titulo: 'Vigencia', render: (g) => marcaFecha(g.fecha_vencimiento, 'gafete') },
       { titulo: 'Estado', render: (g) => marca(g.estado === 'Activo' ? 'vigente' : 'neutro', g.estado) },
       { titulo: '', render: (g) => botonesFila(g.id, [{ op: 'credencial', texto: 'Credencial' }, { op: 'renovar', texto: 'Renovar' }]) },
     ],
@@ -490,7 +538,7 @@ export async function gafetes(cont) {
           ['Nivel de acceso', esc(g.nivel_acceso)],
           ['Emision', fecha(g.fecha_emision)],
           ['Vencimiento', fecha(g.fecha_vencimiento)],
-          ['Situacion', marcaFecha(g.fecha_vencimiento)],
+          ['Situacion', marcaFecha(g.fecha_vencimiento, 'gafete')],
           ['Estado', esc(g.estado)],
         ])}
         <p style="margin-top:16px;font-size:.85rem"><b>Observaciones:</b> ${esc(g.observaciones || 'Sin observaciones.')}</p>`,
@@ -545,10 +593,10 @@ export async function extintores(cont) {
       { titulo: 'Codigo', render: (x) => celdaClave(x.codigo, `${x.tipo} ${x.capacidad_kg} kg`) },
       { titulo: 'Ubicacion', render: (x) => `${esc(x.ubicacion)}<span class="sub">${esc(x.area)}</span>` },
       { titulo: 'Recarga', render: (x) => `${fecha(x.fecha_recarga)}<span class="sub">ultima</span>`, clase: 'fecha' },
-      { titulo: 'Prox. recarga', render: (x) => `${fecha(x.fecha_prox_recarga)}<br>${marcaFecha(x.fecha_prox_recarga)}`, clase: 'fecha' },
+      { titulo: 'Prox. recarga', render: (x) => `${fecha(x.fecha_prox_recarga)}<br>${marcaFecha(x.fecha_prox_recarga, 'extintor')}`, clase: 'fecha' },
       {
         titulo: 'Prox. hidrostatica',
-        render: (x) => (x.fecha_prox_hidrostatica ? `${fecha(x.fecha_prox_hidrostatica)}<br>${marcaFecha(x.fecha_prox_hidrostatica)}` : '—'),
+        render: (x) => (x.fecha_prox_hidrostatica ? `${fecha(x.fecha_prox_hidrostatica)}<br>${marcaFecha(x.fecha_prox_hidrostatica, 'extintor')}` : '—'),
         clase: 'fecha',
       },
       { titulo: 'Responsable', render: (x) => esc(x.responsable ?? 'Sin asignar') },
@@ -586,9 +634,9 @@ export async function extintores(cont) {
           ['Responsable', esc(x.responsable ?? 'Sin asignar')],
           ['Fabricacion', fecha(x.fecha_fabricacion)],
           ['Ultima recarga', fecha(x.fecha_recarga)],
-          ['Proxima recarga', `${fecha(x.fecha_prox_recarga)} ${marcaFecha(x.fecha_prox_recarga)}`],
+          ['Proxima recarga', `${fecha(x.fecha_prox_recarga)} ${marcaFecha(x.fecha_prox_recarga, 'extintor')}`],
           ['Ultima hidrostatica', fecha(x.fecha_prueba_hidrostatica)],
-          ['Proxima hidrostatica', x.fecha_prox_hidrostatica ? `${fecha(x.fecha_prox_hidrostatica)} ${marcaFecha(x.fecha_prox_hidrostatica)}` : '—'],
+          ['Proxima hidrostatica', x.fecha_prox_hidrostatica ? `${fecha(x.fecha_prox_hidrostatica)} ${marcaFecha(x.fecha_prox_hidrostatica, 'extintor')}` : '—'],
           ['Estado', esc(x.estado)],
         ])}
         <p style="margin-top:16px;font-size:.85rem"><b>Observaciones:</b> ${esc(x.observaciones || 'Sin observaciones.')}</p>`,
@@ -631,7 +679,8 @@ export async function equipos(cont) {
       { titulo: 'Equipo', render: (q) => `${esc(q.nombre)}<span class="sub">${esc(q.marca)} ${esc(q.modelo)}</span>` },
       { titulo: 'Categoria', campo: 'categoria' },
       { titulo: 'Ubicacion', render: (q) => `${esc(q.ubicacion)}<span class="sub">${esc(q.responsable ?? 'Sin asignar')}</span>` },
-      { titulo: 'Vence', render: (q) => `${fecha(q.fecha_vencimiento)}<br>${marcaFecha(q.fecha_vencimiento)}`, clase: 'fecha' },
+      { titulo: 'Inicio', render: (q) => fecha(q.fecha_inicio ?? q.fecha_adquisicion), clase: 'fecha' },
+      { titulo: 'Vence', render: (q) => `${fecha(q.fecha_vencimiento)}<br>${marcaFecha(q.fecha_vencimiento, q.tipo_alerta)}`, clase: 'fecha' },
       {
         titulo: 'Mantenimiento',
         clase: 'fecha',
@@ -649,12 +698,23 @@ export async function equipos(cont) {
       { nombre: 'codigo', etiqueta: 'Codigo de inventario', requerido: true },
       { nombre: 'nombre', etiqueta: 'Nombre del equipo', requerido: true },
       { nombre: 'categoria', etiqueta: 'Categoria', tipo: 'select', requerido: true, opciones: estado.catalogos.categoriasEquipo },
+      {
+        nombre: 'tipo_alerta',
+        etiqueta: 'Tipo de elemento (define el aviso)',
+        tipo: 'select',
+        requerido: true,
+        opciones: (estado.catalogos.tiposAlerta ?? [])
+          .filter((t) => ['botiquin', 'arnes', 'equipo'].includes(t.clave))
+          .map((t) => ({ valor: t.clave, texto: `${t.nombre} — aviso ${t.dias_proximo} d` })),
+        ayuda: 'Determina con cuantos dias de anticipacion se avisa.',
+      },
       { nombre: 'marca', etiqueta: 'Marca' },
       { nombre: 'modelo', etiqueta: 'Modelo' },
       { nombre: 'serie', etiqueta: 'Numero de serie' },
       { nombre: 'ubicacion', etiqueta: 'Ubicacion / area' },
       { nombre: 'responsable_id', etiqueta: 'Responsable', tipo: 'select', permiteVacio: true, opciones: opcionesEmpleados() },
       { nombre: 'fecha_adquisicion', etiqueta: 'Fecha de adquisicion', tipo: 'fecha' },
+      { nombre: 'fecha_inicio', etiqueta: 'Inicio de vigencia', tipo: 'fecha', requerido: true, ayuda: 'Fecha desde la que el elemento es valido.' },
       { nombre: 'fecha_vencimiento', etiqueta: 'Vencimiento / caducidad', tipo: 'fecha', requerido: true },
       { nombre: 'frecuencia_meses', etiqueta: 'Frecuencia de mantenimiento (meses)', tipo: 'numero', paso: '1', ayuda: '0 si no requiere mantenimiento periodico.' },
       { nombre: 'fecha_ultimo_mantenimiento', etiqueta: 'Ultimo mantenimiento', tipo: 'fecha' },
@@ -691,6 +751,81 @@ export async function equipos(cont) {
       if (!ok) return;
       await api.actualizar(`/api/equipos/${q.id}`, { fecha_ultimo_mantenimiento: hoy() });
       aviso('Mantenimiento registrado.');
+      await recargar();
+      estado.refrescarEstado?.();
+    },
+  });
+}
+
+/* ================================================================== */
+/* Licencias de conducir                                               */
+/* ================================================================== */
+
+export async function licencias(cont) {
+  await pantallaCatalogo(cont, {
+    clave: 'licencias',
+    ruta: '/api/licencias',
+    titulo: 'Licencias de conducir',
+    singular: 'licencia',
+    textoNuevo: 'Nueva licencia',
+    descripcion: 'Documentos de conduccion del personal operativo que opera vehiculos oficiales.',
+    columnas: [
+      { titulo: 'Numero', render: (l) => celdaClave(l.numero) },
+      { titulo: 'Titular', render: (l) => `${esc(l.empleado)}<span class="sub">${esc(l.rpe)} · ${esc(l.departamento)}</span>` },
+      { titulo: 'Tipo', render: (l) => `${esc(l.tipo)}<span class="sub">${esc(l.ambito)}</span>` },
+      { titulo: 'Expedicion', render: (l) => fecha(l.fecha_inicio), clase: 'fecha' },
+      { titulo: 'Vence', render: (l) => fecha(l.fecha_vencimiento), clase: 'fecha' },
+      { titulo: 'Vigencia', render: (l) => marcaFecha(l.fecha_vencimiento, 'licencia') },
+      { titulo: 'Restricciones', render: (l) => esc(l.restricciones || '—') },
+      { titulo: 'Estado', render: (l) => marca(l.estado === 'Vigente' ? 'vigente' : 'neutro', l.estado) },
+      { titulo: '', render: (l) => botonesFila(l.id, [{ op: 'refrendo', texto: 'Refrendo' }]) },
+    ],
+    campos: () => [
+      { nombre: 'numero', etiqueta: 'Numero de licencia', requerido: true },
+      { nombre: 'empleado_id', etiqueta: 'Titular', tipo: 'select', requerido: true, permiteVacio: true, opciones: opcionesEmpleados() },
+      { nombre: 'tipo', etiqueta: 'Tipo de licencia', tipo: 'select', requerido: true, opciones: estado.catalogos.tiposLicencia },
+      { nombre: 'ambito', etiqueta: 'Ambito', tipo: 'select', requerido: true, opciones: estado.catalogos.ambitosLicencia },
+      { nombre: 'autoridad', etiqueta: 'Autoridad emisora', ancho: 'completo' },
+      { nombre: 'fecha_inicio', etiqueta: 'Fecha de expedicion', tipo: 'fecha', requerido: true },
+      { nombre: 'fecha_vencimiento', etiqueta: 'Fecha de vencimiento', tipo: 'fecha', requerido: true },
+      { nombre: 'restricciones', etiqueta: 'Restricciones', ayuda: 'Uso de lentes, horario diurno, etc.' },
+      { nombre: 'estado', etiqueta: 'Estado', tipo: 'select', requerido: true, opciones: estado.catalogos.estadosLicencia },
+      { nombre: 'observaciones', etiqueta: 'Observaciones', tipo: 'textarea', ancho: 'completo' },
+    ],
+    ver: (l) =>
+      abrirModal({
+        titulo: `Licencia ${l.numero}`,
+        contenido: `${ficha([
+          ['Titular', esc(l.empleado)],
+          ['RPE', esc(l.rpe)],
+          ['Puesto', esc(l.puesto)],
+          ['Departamento', esc(l.departamento)],
+          ['Tipo', esc(l.tipo)],
+          ['Ambito', esc(l.ambito)],
+          ['Autoridad emisora', esc(l.autoridad)],
+          ['Expedicion', fecha(l.fecha_inicio)],
+          ['Vencimiento', fecha(l.fecha_vencimiento)],
+          ['Situacion', marcaFecha(l.fecha_vencimiento, 'licencia')],
+          ['Restricciones', esc(l.restricciones || 'Ninguna')],
+          ['Estado', esc(l.estado)],
+        ])}
+        <p style="margin-top:16px;font-size:.85rem"><b>Observaciones:</b> ${esc(l.observaciones || 'Sin observaciones.')}</p>`,
+        acciones: [{ texto: 'Cerrar', alClic: (_c, cerrar) => cerrar() }],
+      }),
+    accionesExtra: async (op, l, recargar) => {
+      if (op !== 'refrendo') return;
+      if (!puede('supervisor')) return aviso('Sin permisos para registrar refrendos.', 'error');
+      const ok = await confirmar(
+        `Se registrara el refrendo de la licencia ${l.numero} con expedicion de hoy y vigencia a 3 anos (${fecha(sumarMeses(hoy(), 36))}).`,
+        'Registrar'
+      );
+      if (!ok) return;
+      await api.actualizar(`/api/licencias/${l.id}`, {
+        fecha_inicio: hoy(),
+        fecha_vencimiento: sumarMeses(hoy(), 36),
+        estado: 'Vigente',
+      });
+      aviso('Refrendo registrado. Nueva vigencia a 3 anos.');
       await recargar();
       estado.refrescarEstado?.();
     },
@@ -804,7 +939,7 @@ export async function usuarios(cont) {
       <h3 class="titulo-bloque">Perfiles</h3>
       ${ficha([
         ['Administrador', '<span style="font-weight:400">Acceso total: usuarios, configuracion y bitacora.</span>'],
-        ['Supervisor', '<span style="font-weight:400">Alta, cambio y baja en los cuatro catalogos.</span>'],
+        ['Supervisor', '<span style="font-weight:400">Alta, cambio y baja de los cinco elementos y del personal.</span>'],
         ['Consulta', '<span style="font-weight:400">Solo lectura de catalogos, vigencias y alertas.</span>'],
       ])}
     </div>
@@ -875,21 +1010,21 @@ export async function usuarios(cont) {
 /* ================================================================== */
 
 export async function configuracion(cont) {
-  const c = await api.obtener('/api/configuracion');
+  const [c, tipos] = await Promise.all([api.obtener('/api/configuracion'), api.obtener('/api/tipos-alerta')]);
   estado.configuracion = c;
 
   cont.innerHTML = `
     ${rotulo('Configuracion', 'Parametros de alertas y datos del centro de trabajo.')}
     <div class="rejilla rejilla--2">
       <div class="hoja hoja--acento">
-        <h3 class="titulo-bloque">Parametros de alerta</h3>
+        <h3 class="titulo-bloque">Centro de trabajo y correo</h3>
         <div id="form-config">
           ${formulario(
             [
-              { nombre: 'dias_proximos', etiqueta: 'Umbral "por vencer" (dias)', tipo: 'numero', paso: '1', requerido: true },
-              { nombre: 'dias_criticos', etiqueta: 'Umbral "critico" (dias)', tipo: 'numero', paso: '1', requerido: true },
               { nombre: 'nombre_centro', etiqueta: 'Centro de trabajo', ancho: 'completo' },
-              { nombre: 'zona', etiqueta: 'Zona / division', ancho: 'completo' },
+              { nombre: 'zona', etiqueta: 'Division / zona', ancho: 'completo' },
+              { nombre: 'municipio', etiqueta: 'Municipio y estado', ancho: 'completo' },
+              { nombre: 'area_responsable', etiqueta: 'Area responsable', ancho: 'completo' },
               { nombre: 'correo_administrador', etiqueta: 'Correo del administrador', tipo: 'correo', ancho: 'completo', ayuda: 'Recibe el concentrado de alertas.' },
               {
                 nombre: 'notificar_por_correo',
@@ -898,6 +1033,8 @@ export async function configuracion(cont) {
                 ancho: 'completo',
                 opciones: [{ valor: '0', texto: 'Desactivado (solo en el sistema)' }, { valor: '1', texto: 'Activado (requiere SMTP)' }],
               },
+              { nombre: 'dias_proximos', etiqueta: 'Aviso previo general (dias)', tipo: 'numero', paso: '1', requerido: true, ayuda: 'Se usa cuando un elemento no tiene umbral propio.' },
+              { nombre: 'dias_criticos', etiqueta: 'Critico general (dias)', tipo: 'numero', paso: '1', requerido: true },
             ],
             c
           )}
@@ -906,16 +1043,28 @@ export async function configuracion(cont) {
       </div>
 
       <div class="hoja hoja--acento">
+        <h3 class="titulo-bloque">Anticipacion por tipo de elemento</h3>
+        <p style="font-size:.82rem;color:var(--gris);margin-top:0">
+          Cada elemento se avisa con su propia anticipacion. <b>Aviso previo</b> enciende el
+          amarillo del semaforo y <b>critico</b> marca la urgencia maxima.
+        </p>
+        <div id="tabla-tipos"></div>
+        <button class="boton boton--primario" id="btn-guardar-tipos" style="margin-top:14px">Guardar umbrales</button>
+      </div>
+    </div>
+
+    <div class="rejilla rejilla--2" style="margin-top:14px">
+      <div class="hoja hoja--acento">
         <h3 class="titulo-bloque">Motor de vencimientos</h3>
         <p style="font-size:.85rem;color:var(--gris);line-height:1.6;margin-top:0">
-          Revisa todos los conceptos con fecha de caducidad (vigencia de gafetes, recarga y prueba
-          hidrostatica de extintores, caducidad y mantenimiento de equipo) al arrancar el servidor
-          y despues cada 6 horas.
+          Revisa los cinco elementos con fecha de caducidad (gafetes, extintores, botiquines,
+          arneses y licencias de conducir) al arrancar el servidor y despues cada 6 horas,
+          calculando los dias restantes desde la fecha de inicio hasta la de caducidad.
         </p>
         <ol style="font-size:.85rem;line-height:1.85;padding-left:18px;margin:0">
-          <li>A <b>${esc(c.dias_proximos)} dias</b> o menos se genera la alerta <b>Por vencer</b>.</li>
-          <li>A <b>${esc(c.dias_criticos)} dias</b> o menos la alerta cambia a <b>Critica</b>.</li>
-          <li>Pasada la fecha se genera la alerta de <b>Vencido</b>.</li>
+          <li>Dentro del <b>aviso previo</b> del tipo, el semaforo pasa a <b>amarillo</b>.</li>
+          <li>Dentro del umbral <b>critico</b>, la alerta se marca como urgente.</li>
+          <li>Pasada la fecha, el semaforo pasa a <b>rojo</b> (vencido).</li>
           <li>Cada alerta llega a la campana y, con el correo activado, al administrador.</li>
           <li>Al renovar un registro el ciclo reinicia con la fecha nueva.</li>
         </ol>
@@ -934,6 +1083,44 @@ export async function configuracion(cont) {
       </div>
       <button class="boton" id="btn-contrasena">Actualizar contrasena</button>
     </div>`;
+
+  // Tabla editable de umbrales por tipo de elemento.
+  cont.querySelector('#tabla-tipos').innerHTML = `
+    <div class="matriz">
+      <div class="matriz__fila matriz__fila--cabeza" style="grid-template-columns:1fr 92px 92px">
+        <span>Tipo de elemento</span><span>Aviso previo</span><span>Critico</span>
+      </div>
+      ${tipos
+        .map(
+          (t) => `<div class="matriz__fila" style="grid-template-columns:1fr 92px 92px">
+            <span class="matriz__nombre">${esc(t.nombre)}</span>
+            <input type="number" min="1" max="365" value="${t.dias_proximo}" data-tipo="${esc(t.clave)}" data-campo="dias_proximo" />
+            <input type="number" min="0" max="365" value="${t.dias_critico}" data-tipo="${esc(t.clave)}" data-campo="dias_critico" />
+          </div>`
+        )
+        .join('')}
+    </div>`;
+  cont.querySelectorAll('#tabla-tipos input').forEach((i) => {
+    i.style.cssText = 'width:100%;padding:5px 7px;border:1px solid var(--linea);font-family:var(--mono);font-size:.8rem;text-align:center';
+  });
+
+  cont.querySelector('#btn-guardar-tipos').onclick = async (e) => {
+    const cuerpo = {};
+    for (const entrada of cont.querySelectorAll('#tabla-tipos input')) {
+      const clave = entrada.dataset.tipo;
+      cuerpo[clave] = cuerpo[clave] ?? {};
+      cuerpo[clave][entrada.dataset.campo] = Number(entrada.value);
+    }
+    e.target.disabled = true;
+    try {
+      estado.catalogos.tiposAlerta = await api.actualizar('/api/tipos-alerta', cuerpo);
+      aviso('Umbrales por tipo de elemento actualizados.');
+      await estado.refrescarEstado?.();
+    } catch (err) {
+      aviso(err.message, 'error');
+    }
+    e.target.disabled = false;
+  };
 
   cont.querySelector('#btn-guardar-config').onclick = async (e) => {
     const datos = leerFormulario(cont.querySelector('#form-config'));

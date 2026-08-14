@@ -96,16 +96,31 @@ export function icono(nombre, clase = '') {
   return `<svg class="ico ${clase}" aria-hidden="true"><use href="#i-${nombre}"></use></svg>`;
 }
 
-/** Clasifica una fecha con los umbrales configurados en el servidor. */
-export function clasificar(iso) {
+/** Colores del semaforo del anteproyecto. */
+export const SEMAFORO = { vigente: 'verde', proximo: 'amarillo', critico: 'amarillo', vencido: 'rojo', sin_fecha: 'gris' };
+
+/**
+ * Clasifica una fecha usando la anticipacion configurada para SU tipo de
+ * elemento (gafete, extintor, botiquin, arnes, licencia o equipo).
+ */
+export function clasificar(iso, tipo = null) {
   const dias = diasEntre(iso);
-  if (dias === null) return { clase: 'sin_fecha', dias: null, texto: 'Sin fecha' };
-  const critico = Number(estado.configuracion.dias_criticos ?? 7);
-  const proximo = Number(estado.configuracion.dias_proximos ?? 30);
-  if (dias < 0) return { clase: 'vencido', dias, texto: `Vencido hace ${Math.abs(dias)} d` };
-  if (dias <= critico) return { clase: 'critico', dias, texto: dias === 0 ? 'Vence hoy' : `${dias} d` };
-  if (dias <= proximo) return { clase: 'proximo', dias, texto: `${dias} d` };
-  return { clase: 'vigente', dias, texto: `${dias} d` };
+  if (dias === null) return { clase: 'sin_fecha', dias: null, texto: 'Sin fecha', semaforo: 'gris' };
+
+  const t = (estado.catalogos?.tiposAlerta ?? []).find((x) => x.clave === tipo);
+  const critico = t ? t.dias_critico : Number(estado.configuracion.dias_criticos ?? 7);
+  const proximo = t ? t.dias_proximo : Number(estado.configuracion.dias_proximos ?? 30);
+
+  const salida =
+    dias < 0
+      ? { clase: 'vencido', texto: `Vencido hace ${Math.abs(dias)} d` }
+      : dias <= critico
+        ? { clase: 'critico', texto: dias === 0 ? 'Vence hoy' : `${dias} d` }
+        : dias <= proximo
+          ? { clase: 'proximo', texto: `${dias} d` }
+          : { clase: 'vigente', texto: `${dias} d` };
+
+  return { ...salida, dias, semaforo: SEMAFORO[salida.clase] };
 }
 
 /** Banderin de estado: cuadro de color + rotulacion tecnica. */
@@ -113,9 +128,9 @@ export function marca(clase, texto) {
   return `<span class="marca marca--${esc(clase)}">${esc(texto ?? ETIQUETAS[clase] ?? clase)}</span>`;
 }
 
-/** Banderin calculado a partir de una fecha de vencimiento. */
-export function marcaFecha(iso) {
-  const c = clasificar(iso);
+/** Banderin calculado a partir de una fecha de vencimiento y su tipo. */
+export function marcaFecha(iso, tipo = null) {
+  const c = clasificar(iso, tipo);
   return marca(c.clase, c.texto);
 }
 
