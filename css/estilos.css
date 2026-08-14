@@ -361,6 +361,67 @@ html, body {
 }
 .cifra__nota { font-size: .74rem; color: var(--gris); margin-top: 3px; }
 
+/* --- Semaforo de vigencias (indicador del anteproyecto) --- */
+
+.semaforo { display: flex; gap: 20px; align-items: stretch; }
+
+.semaforo__poste {
+  background: var(--tinta); padding: 12px 11px; display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid #000; flex: none;
+}
+.semaforo__lampara {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--mono); font-size: .82rem; font-weight: 700; color: rgba(255, 255, 255, .32);
+  background: #222825; border: 2px solid #000; transition: box-shadow .25s, background .25s, color .25s;
+}
+.semaforo__lampara--rojo.encendida { background: var(--rojo); color: #fff; box-shadow: 0 0 0 3px rgba(191, 58, 43, .28), 0 0 18px rgba(191, 58, 43, .75); }
+.semaforo__lampara--amarillo.encendida { background: #d9a300; color: #201a00; box-shadow: 0 0 0 3px rgba(217, 163, 0, .26), 0 0 18px rgba(217, 163, 0, .7); }
+.semaforo__lampara--verde.encendida { background: var(--verde-cl); color: #04240f; box-shadow: 0 0 0 3px rgba(18, 164, 95, .26), 0 0 18px rgba(18, 164, 95, .7); }
+
+.semaforo__lectura { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 9px; min-width: 0; }
+.semaforo__renglon {
+  display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 11px;
+  padding-bottom: 9px; border-bottom: 1px solid var(--linea);
+}
+.semaforo__renglon:last-child { border-bottom: 0; padding-bottom: 0; }
+.semaforo__punto { width: 13px; height: 13px; }
+.semaforo__punto--rojo { background: var(--rojo); }
+.semaforo__punto--amarillo { background: #d9a300; }
+.semaforo__punto--verde { background: var(--verde); }
+.semaforo__texto strong {
+  display: block; font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .14em; text-transform: uppercase;
+}
+.semaforo__texto span { font-size: .76rem; color: var(--gris); }
+.semaforo__cifra { font-family: var(--cond); font-size: 1.9rem; font-weight: 700; line-height: 1; }
+
+@media (max-width: 560px) {
+  .semaforo { flex-direction: column; }
+  .semaforo__poste { flex-direction: row; justify-content: center; }
+}
+
+/* --- Matriz por tipo de elemento --- */
+
+.matriz { display: grid; gap: 0; border-top: 1px solid var(--linea); }
+.matriz__fila {
+  display: grid; grid-template-columns: 1fr 76px repeat(3, 42px);
+  align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--linea);
+}
+.matriz__fila--cabeza {
+  font-family: var(--mono); font-size: .58rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--gris); border-bottom: 2px solid var(--linea-fuerte); padding-top: 0;
+}
+.matriz__nombre { font-size: .84rem; font-weight: 600; }
+.matriz__umbral { font-family: var(--mono); font-size: .68rem; color: var(--gris); }
+.matriz__celda {
+  font-family: var(--mono); font-size: .78rem; font-weight: 700; text-align: center;
+  padding: 4px 0; border: 1px solid var(--linea); color: var(--gris-cl);
+}
+.matriz__celda[data-valor]:not([data-valor="0"]) { color: #fff; }
+.matriz__celda--rojo[data-valor]:not([data-valor="0"]) { background: var(--rojo); border-color: var(--rojo); }
+.matriz__celda--amarillo[data-valor]:not([data-valor="0"]) { background: #d9a300; border-color: #d9a300; color: #201a00; }
+.matriz__celda--verde[data-valor]:not([data-valor="0"]) { background: var(--verde); border-color: var(--verde); }
+
 /* --- Linea de tiempo de vencimientos --- */
 
 .linea-tiempo { padding-top: 6px; }
