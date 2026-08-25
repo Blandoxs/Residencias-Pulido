@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Vistas de la aplicacion. Cada funcion recibe el contenedor principal
  * y se encarga de dibujar la pantalla completa y enlazar sus eventos.
  */
 import {
   api, estado, esc, fecha, fechaHora, hoy, marca, marcaFecha, clasificar, tabla, formulario,
-  leerFormulario, activarFotos, abrirModal, confirmar, aviso, puede, icono, celdaClave, descargarCSV,
+  leerFormulario, activarFotos, abrirModal, confirmar, aviso, puede, esAdmin, icono, celdaClave, descargarCSV,
 } from './nucleo.js';
 
 /* ================================================================== */
@@ -20,11 +20,15 @@ function rotulo(titulo, descripcion, acciones = '') {
 
 const btnExportar = `<button class="boton" id="btn-exportar">${icono('descargar', 'ico--sm')} CSV</button>`;
 
-function botonesFila(id, extras = []) {
+/**
+ * Botones de cada fila. Los de alta, cambio y baja solo aparecen si el
+ * perfil en sesion tiene asignado ese modulo.
+ */
+function botonesFila(id, modulo, extras = []) {
   const otros = extras
     .map((e) => `<button class="boton boton--mini" data-op="${e.op}" data-id="${id}">${esc(e.texto)}</button>`)
     .join('');
-  const gestion = puede('supervisor')
+  const gestion = puede(modulo)
     ? `<button class="boton boton--mini boton--icono" data-op="editar" data-id="${id}" title="Editar">${icono('editar', 'ico--sm')}</button>
        <button class="boton boton--mini boton--icono boton--peligro" data-op="eliminar" data-id="${id}" title="Eliminar">${icono('eliminar', 'ico--sm')}</button>`
     : '';
@@ -59,7 +63,7 @@ async function pantallaCatalogo(cont, cfg) {
     cont.querySelector('#conteo').textContent = `${filas.length} registro${filas.length === 1 ? '' : 's'}`;
   }
 
-  const botonNuevo = puede('supervisor')
+  const botonNuevo = puede(cfg.clave)
     ? `<button class="boton boton--primario" id="btn-nuevo">${icono('mas', 'ico--sm')} ${esc(cfg.textoNuevo ?? 'Nuevo')}</button>`
     : '';
 
@@ -142,6 +146,14 @@ async function pantallaCatalogo(cont, cfg) {
   });
 
   await cargar();
+
+  // Enlace directo desde el correo de aviso:  #/gafetes?ficha=12
+  const idFicha = Number(cont.__parametros?.ficha);
+  if (idFicha) {
+    const registro = (cont.__filas ?? []).find((f) => f.id === idFicha);
+    if (registro) cfg.ver(registro);
+    else aviso('El registro indicado en el enlace ya no existe.', 'error');
+  }
 }
 
 /* ================================================================== */
@@ -417,7 +429,7 @@ export async function notificaciones(cont) {
               </div>
               <div class="acciones">
                 ${n.leida ? '' : `<button class="boton boton--mini" data-leer="${n.id}">Leida</button>`}
-                ${puede('supervisor')
+                ${esAdmin()
                   ? `<button class="boton boton--mini boton--icono boton--peligro" data-borrar="${n.id}" title="Eliminar">${icono('eliminar', 'ico--sm')}</button>`
                   : ''}
               </div>
@@ -496,7 +508,8 @@ function credencialHTML(g, cfg) {
   </div>`;
 }
 
-export async function gafetes(cont) {
+export async function gafetes(cont, parametros = {}) {
+  cont.__parametros = parametros;
   await pantallaCatalogo(cont, {
     clave: 'gafetes',
     ruta: '/api/gafetes',
@@ -512,7 +525,7 @@ export async function gafetes(cont) {
       { titulo: 'Vence', render: (g) => fecha(g.fecha_vencimiento), clase: 'fecha' },
       { titulo: 'Vigencia', render: (g) => marcaFecha(g.fecha_vencimiento, 'gafete') },
       { titulo: 'Estado', render: (g) => marca(g.estado === 'Activo' ? 'vigente' : 'neutro', g.estado) },
-      { titulo: '', render: (g) => botonesFila(g.id, [{ op: 'credencial', texto: 'Credencial' }, { op: 'renovar', texto: 'Renovar' }]) },
+      { titulo: '', render: (g) => botonesFila(g.id, 'gafetes', [{ op: 'credencial', texto: 'Credencial' }, { op: 'renovar', texto: 'Renovar' }]) },
     ],
     campos: () => [
       { nombre: 'folio', etiqueta: 'Folio', requerido: true },
@@ -556,7 +569,7 @@ export async function gafetes(cont) {
         });
       }
       if (op === 'renovar') {
-        if (!puede('supervisor')) return aviso('Sin permisos para renovar gafetes.', 'error');
+        if (!puede('gafetes')) return aviso('Su perfil no administra gafetes.', 'error');
         const ok = await confirmar(
           `Se renovara el gafete ${g.folio} por 12 meses a partir de hoy (nueva vigencia: ${fecha(sumarMeses(hoy(), 12))}).`,
           'Renovar'
@@ -579,7 +592,8 @@ export async function gafetes(cont) {
 /* Extintores                                                          */
 /* ================================================================== */
 
-export async function extintores(cont) {
+export async function extintores(cont, parametros = {}) {
+  cont.__parametros = parametros;
   await pantallaCatalogo(cont, {
     clave: 'extintores',
     ruta: '/api/extintores',
@@ -602,7 +616,7 @@ export async function extintores(cont) {
         titulo: 'Estado',
         render: (x) => marca(x.estado === 'Operativo' ? 'vigente' : x.estado === 'Fuera de servicio' ? 'vencido' : 'neutro', x.estado),
       },
-      { titulo: '', render: (x) => botonesFila(x.id, [{ op: 'recarga', texto: 'Recarga' }]) },
+      { titulo: '', render: (x) => botonesFila(x.id, 'extintores', [{ op: 'recarga', texto: 'Recarga' }]) },
     ],
     campos: () => [
       { nombre: 'codigo', etiqueta: 'Codigo / numero economico', requerido: true },
@@ -642,7 +656,7 @@ export async function extintores(cont) {
       }),
     accionesExtra: async (op, x, recargar) => {
       if (op !== 'recarga') return;
-      if (!puede('supervisor')) return aviso('Sin permisos para registrar recargas.', 'error');
+      if (!puede('extintores')) return aviso('Su perfil no administra extintores.', 'error');
       const ok = await confirmar(
         `Se registrara la recarga del extintor ${x.codigo} con fecha de hoy; la proxima quedara programada para el ${fecha(sumarMeses(hoy(), 12))}.`,
         'Registrar'
@@ -664,14 +678,15 @@ export async function extintores(cont) {
 /* Equipo                                                              */
 /* ================================================================== */
 
-export async function equipos(cont) {
+export async function equipos(cont, parametros = {}) {
+  cont.__parametros = parametros;
   await pantallaCatalogo(cont, {
     clave: 'equipos',
     ruta: '/api/equipos',
-    titulo: 'Equipo con vigencia',
+    titulo: 'Botiquines y arneses',
     singular: 'equipo',
     textoNuevo: 'Nuevo equipo',
-    descripcion: 'Proteccion personal, herramienta aislada, instrumentos e insumos con caducidad.',
+    descripcion: 'Botiquines, arneses y demas equipo de seguridad con caducidad o revision periodica.',
     columnas: [
       { titulo: 'Codigo', render: (q) => celdaClave(q.codigo, q.serie) },
       { titulo: 'Equipo', render: (q) => `${esc(q.nombre)}<span class="sub">${esc(q.marca)} ${esc(q.modelo)}</span>` },
@@ -690,7 +705,7 @@ export async function equipos(cont) {
             : '<span class="sub">No aplica</span>',
       },
       { titulo: 'Estado', render: (q) => marca(q.estado === 'En servicio' ? 'vigente' : 'neutro', q.estado) },
-      { titulo: '', render: (q) => botonesFila(q.id, [{ op: 'mantenimiento', texto: 'Mantto.' }]) },
+      { titulo: '', render: (q) => botonesFila(q.id, 'equipos', [{ op: 'mantenimiento', texto: 'Mantto.' }]) },
     ],
     campos: () => [
       { nombre: 'codigo', etiqueta: 'Codigo de inventario', requerido: true },
@@ -739,7 +754,7 @@ export async function equipos(cont) {
       }),
     accionesExtra: async (op, q, recargar) => {
       if (op !== 'mantenimiento') return;
-      if (!puede('supervisor')) return aviso('Sin permisos para registrar mantenimientos.', 'error');
+      if (!puede('equipos')) return aviso('Su perfil no administra botiquines y arneses.', 'error');
       const ok = await confirmar(
         `Se registrara el mantenimiento del equipo ${q.codigo} con fecha de hoy${
           q.frecuencia_meses > 0 ? ` (proximo en ${q.frecuencia_meses} meses)` : ''
@@ -759,7 +774,8 @@ export async function equipos(cont) {
 /* Licencias de conducir                                               */
 /* ================================================================== */
 
-export async function licencias(cont) {
+export async function licencias(cont, parametros = {}) {
+  cont.__parametros = parametros;
   await pantallaCatalogo(cont, {
     clave: 'licencias',
     ruta: '/api/licencias',
@@ -776,7 +792,7 @@ export async function licencias(cont) {
       { titulo: 'Vigencia', render: (l) => marcaFecha(l.fecha_vencimiento, 'licencia') },
       { titulo: 'Restricciones', render: (l) => esc(l.restricciones || '—') },
       { titulo: 'Estado', render: (l) => marca(l.estado === 'Vigente' ? 'vigente' : 'neutro', l.estado) },
-      { titulo: '', render: (l) => botonesFila(l.id, [{ op: 'refrendo', texto: 'Refrendo' }]) },
+      { titulo: '', render: (l) => botonesFila(l.id, 'licencias', [{ op: 'refrendo', texto: 'Refrendo' }]) },
     ],
     campos: () => [
       { nombre: 'numero', etiqueta: 'Numero de licencia', requerido: true },
@@ -812,7 +828,7 @@ export async function licencias(cont) {
       }),
     accionesExtra: async (op, l, recargar) => {
       if (op !== 'refrendo') return;
-      if (!puede('supervisor')) return aviso('Sin permisos para registrar refrendos.', 'error');
+      if (!puede('licencias')) return aviso('Su perfil no administra licencias.', 'error');
       const ok = await confirmar(
         `Se registrara el refrendo de la licencia ${l.numero} con expedicion de hoy y vigencia a 3 anos (${fecha(sumarMeses(hoy(), 36))}).`,
         'Registrar'
@@ -834,7 +850,8 @@ export async function licencias(cont) {
 /* Personal                                                            */
 /* ================================================================== */
 
-export async function empleados(cont) {
+export async function empleados(cont, parametros = {}) {
+  cont.__parametros = parametros;
   await pantallaCatalogo(cont, {
     clave: 'empleados',
     ruta: '/api/empleados',
@@ -857,7 +874,7 @@ export async function empleados(cont) {
       { titulo: 'Contacto', render: (e) => `${esc(e.correo)}<span class="sub">${esc(e.telefono)}</span>` },
       { titulo: 'Sangre', campo: 'tipo_sangre', clase: 'num' },
       { titulo: 'Situacion', render: (e) => marca(e.activo ? 'vigente' : 'neutro', e.activo ? 'Activo' : 'Baja') },
-      { titulo: '', render: (e) => botonesFila(e.id) },
+      { titulo: '', render: (e) => botonesFila(e.id, 'empleados') },
     ],
     campos: () => [
       { nombre: 'rpe', etiqueta: 'RPE', requerido: true },
@@ -903,8 +920,8 @@ function iniciales(nombre = '') {
 export async function usuarios(cont) {
   const ROLES = [
     { valor: 'admin', texto: 'Administrador' },
-    { valor: 'supervisor', texto: 'Supervisor' },
-    { valor: 'consulta', texto: 'Consulta' },
+    { valor: 'seguridad', texto: 'Jefe de Seguridad' },
+    { valor: 'documentacion', texto: 'Encargado de Documentacion' },
   ];
 
   async function cargar() {
@@ -934,12 +951,28 @@ export async function usuarios(cont) {
     ${rotulo('Usuarios del sistema', 'Cuentas de acceso y perfiles de permisos.', `
       <button class="boton boton--primario" id="btn-nuevo">${icono('mas', 'ico--sm')} Nuevo usuario</button>`)}
     <div class="hoja" style="margin-bottom:14px">
-      <h3 class="titulo-bloque">Perfiles</h3>
-      ${ficha([
-        ['Administrador', '<span style="font-weight:400">Acceso total: usuarios, configuracion y bitacora.</span>'],
-        ['Supervisor', '<span style="font-weight:400">Alta, cambio y baja de los cinco elementos y del personal.</span>'],
-        ['Consulta', '<span style="font-weight:400">Solo lectura de catalogos, vigencias y alertas.</span>'],
-      ])}
+      <h3 class="titulo-bloque">Reparto de modulos por perfil</h3>
+      ${tabla(
+        [
+          { titulo: 'Modulo', render: (f) => `<strong>${esc(f.modulo)}</strong>` },
+          { titulo: 'Jefe de Seguridad', render: (f) => (f.seguridad ? marca('vigente', 'Si') : marca('neutro', 'No')) },
+          { titulo: 'Enc. de Documentacion', render: (f) => (f.documentacion ? marca('vigente', 'Si') : marca('neutro', 'No')) },
+          { titulo: 'Administrador', render: (f) => (f.admin ? marca('info', 'Si') : marca('neutro', 'No')) },
+        ],
+        [
+          { modulo: 'Panel, Vigencias y Alertas', seguridad: 1, documentacion: 1, admin: 1 },
+          { modulo: 'Extintores', seguridad: 1, documentacion: 0, admin: 1 },
+          { modulo: 'Botiquines y arneses', seguridad: 1, documentacion: 0, admin: 1 },
+          { modulo: 'Gafetes', seguridad: 0, documentacion: 1, admin: 1 },
+          { modulo: 'Licencias de conducir', seguridad: 0, documentacion: 1, admin: 1 },
+          { modulo: 'Personal', seguridad: 1, documentacion: 1, admin: 1 },
+          { modulo: 'Usuarios, Configuracion y Bitacora', seguridad: 0, documentacion: 0, admin: 1 },
+        ]
+      )}
+      <p class="texto-tenue" style="margin:12px 0 0;font-size:.8rem">
+        Toda alerta critica llega por correo al trabajador dueno del elemento, al perfil
+        encargado del modulo y siempre con copia al Administrador.
+      </p>
     </div>
     <div id="tabla-usuarios"></div>`;
 

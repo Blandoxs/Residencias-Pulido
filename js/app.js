@@ -2,10 +2,15 @@
  * Arranque de la aplicacion: acceso, navegacion entre vistas,
  * cinta de estado operativo y sesion del usuario.
  */
-import { api, estado, esc, aviso, abrirModal, puede, formulario, leerFormulario, detectarModo } from './nucleo.js';
+import { api, estado, esc, aviso, abrirModal, puede, esAdmin, formulario, leerFormulario, detectarModo } from './nucleo.js';
 import * as vistas from './vistas.js';
 
-const ROLES = { admin: 'Administrador', supervisor: 'Supervisor', consulta: 'Consulta' };
+const ROLES = {
+  admin: 'Administrador',
+  seguridad: 'Jefe de Seguridad',
+  documentacion: 'Enc. de Documentacion',
+  consulta: 'Consulta',
+};
 const VISTA_INICIAL = 'panel';
 
 /* ============================ ARRANQUE ============================ */
@@ -35,12 +40,15 @@ async function iniciar() {
     document.getElementById('nota-servidor').classList.add('oculto');
     document.getElementById('nota-demo').classList.remove('oculto');
     document.getElementById('cinta-demo').classList.remove('oculto');
-    document.getElementById('btn-entrar-demo').onclick = () => {
-      const f = document.getElementById('form-acceso');
-      f.usuario.value = 'admin';
-      f.contrasena.value = 'demo';
-      f.requestSubmit();
-    };
+    // En la demostracion la contrasena es igual al usuario.
+    document.querySelectorAll('[data-cuenta]').forEach((boton) => {
+      boton.onclick = () => {
+        const f = document.getElementById('form-acceso');
+        f.usuario.value = boton.dataset.cuenta;
+        f.contrasena.value = boton.dataset.cuenta;
+        f.requestSubmit();
+      };
+    });
   }
 
   try {
@@ -92,8 +100,7 @@ async function entrar(usuario) {
     .join('')
     .toUpperCase();
 
-  // Oculta las opciones reservadas al administrador.
-  document.querySelectorAll('[data-rol]').forEach((n) => n.classList.toggle('oculto', !puede(n.dataset.rol)));
+  aplicarPermisos();
 
   const [catalogos, config] = await Promise.all([api.obtener('/api/catalogos'), api.obtener('/api/configuracion')]);
   estado.catalogos = catalogos;
@@ -107,13 +114,53 @@ async function entrar(usuario) {
   navegar();
 }
 
+/* ============================ PERMISOS ============================ */
+
+/**
+ * Ajusta el menu al perfil en sesion:
+ *   - [data-rol="admin"] solo para el Administrador
+ *   - [data-modulo="x"]  solo si el perfil administra ese modulo
+ * Si un perfil no tiene ningun elemento asignado, se oculta el encabezado
+ * de la seccion para no dejar un titulo suelto.
+ */
+function aplicarPermisos() {
+  document.querySelectorAll('[data-rol]').forEach((n) => n.classList.toggle('oculto', !esAdmin()));
+  document.querySelectorAll('[data-modulo]').forEach((n) => n.classList.toggle('oculto', !puede(n.dataset.modulo)));
+
+  const elementos = ['extintores', 'equipos', 'gafetes', 'licencias'];
+  const seccion = document.querySelector('[data-seccion="elementos"]');
+  if (seccion) seccion.classList.toggle('oculto', !elementos.some((m) => puede(m)));
+}
+
+/** Vistas que cualquier perfil puede abrir. */
+const VISTAS_ABIERTAS = ['panel', 'vigencias', 'notificaciones'];
+
+/** true si el perfil en sesion puede abrir la vista indicada. */
+function vistaPermitida(nombre) {
+  if (VISTAS_ABIERTAS.includes(nombre)) return true;
+  if (['usuarios', 'configuracion', 'bitacora'].includes(nombre)) return esAdmin();
+  return puede(nombre);
+}
+
 /* ============================ NAVEGACION ============================ */
 
 window.addEventListener('hashchange', navegar);
 
 async function navegar() {
   if (!estado.usuario) return;
-  const nombre = (location.hash.replace('#/', '') || VISTA_INICIAL).split('?')[0];
+  const [ruta, consulta = ''] = location.hash.replace('#/', '').split('?');
+  const nombre = ruta || VISTA_INICIAL;
+  const parametros = Object.fromEntries(new URLSearchParams(consulta));
+
+  // Un perfil no puede abrir a mano una vista que no le corresponde.
+  if (!vistas[nombre] || !vistaPermitida(nombre)) {
+    if (nombre !== VISTA_INICIAL) {
+      aviso('Su perfil no tiene acceso a esa seccion.', 'error');
+      location.hash = `#/${VISTA_INICIAL}`;
+      return;
+    }
+  }
+
   const vista = vistas[nombre] ?? vistas[VISTA_INICIAL];
 
   document.querySelectorAll('.rail a').forEach((a) => a.classList.toggle('activo', a.dataset.vista === nombre));
@@ -126,7 +173,7 @@ async function navegar() {
   contenedor.innerHTML = '<div class="tabla-caja"><div class="vacio">Cargando</div></div>';
 
   try {
-    await vista(contenedor);
+    await vista(contenedor, parametros);
   } catch (e) {
     if (e.codigo === 401) return location.reload();
     contenedor.innerHTML = `<div class="alerta alerta--error">No fue posible cargar la vista: ${esc(e.message)}</div>`;

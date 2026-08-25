@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es-MX">
 <head>
   <meta charset="UTF-8" />
@@ -92,9 +92,15 @@
           Esta version corre completa dentro del navegador, sin servidor: los datos son de
           ejemplo y se guardan solo en este equipo. El sistema real usa Node y SQLite.
         </p>
-        <button class="boton boton--bloque" type="button" id="btn-entrar-demo">
-          Entrar a la demostracion
-        </button>
+        <p class="acceso__perfiles">
+          Entre con cualquiera de los tres perfiles para ver como cambia el menu.
+          La contrasena es igual al usuario:
+        </p>
+        <div class="acceso__cuentas">
+          <button type="button" data-cuenta="admin"><b>admin</b> Administrador</button>
+          <button type="button" data-cuenta="seguridad"><b>seguridad</b> Jefe de Seguridad</button>
+          <button type="button" data-cuenta="documentacion"><b>documentacion</b> Enc. de Documentacion</button>
+        </div>
       </div>
     </form>
   </main>
@@ -154,14 +160,14 @@
       <a href="#/vigencias" data-vista="vigencias"><svg class="ico"><use href="#i-vigencias" /></svg><span>Vigencias</span></a>
       <a href="#/notificaciones" data-vista="notificaciones"><svg class="ico"><use href="#i-campana" /></svg><span>Alertas</span><i class="rail__contador oculto" id="rail-alertas">0</i></a>
 
-      <span class="rail__seccion">02 · Elementos</span>
-      <a href="#/gafetes" data-vista="gafetes"><svg class="ico"><use href="#i-gafete" /></svg><span>Gafetes</span></a>
-      <a href="#/extintores" data-vista="extintores"><svg class="ico"><use href="#i-extintor" /></svg><span>Extintores</span></a>
-      <a href="#/equipos" data-vista="equipos"><svg class="ico"><use href="#i-equipo" /></svg><span>Botiquines y arneses</span></a>
-      <a href="#/licencias" data-vista="licencias"><svg class="ico"><use href="#i-licencia" /></svg><span>Licencias</span></a>
+      <span class="rail__seccion" data-seccion="elementos">02 · Elementos</span>
+      <a href="#/extintores" data-vista="extintores" data-modulo="extintores"><svg class="ico"><use href="#i-extintor" /></svg><span>Extintores</span></a>
+      <a href="#/equipos" data-vista="equipos" data-modulo="equipos"><svg class="ico"><use href="#i-equipo" /></svg><span>Botiquines y arneses</span></a>
+      <a href="#/gafetes" data-vista="gafetes" data-modulo="gafetes"><svg class="ico"><use href="#i-gafete" /></svg><span>Gafetes</span></a>
+      <a href="#/licencias" data-vista="licencias" data-modulo="licencias"><svg class="ico"><use href="#i-licencia" /></svg><span>Licencias</span></a>
 
       <span class="rail__seccion">03 · Padron</span>
-      <a href="#/empleados" data-vista="empleados"><svg class="ico"><use href="#i-personal" /></svg><span>Personal</span></a>
+      <a href="#/empleados" data-vista="empleados" data-modulo="empleados"><svg class="ico"><use href="#i-personal" /></svg><span>Personal</span></a>
 
       <span class="rail__seccion" data-rol="admin">04 · Administracion</span>
       <a href="#/usuarios" data-vista="usuarios" data-rol="admin"><svg class="ico"><use href="#i-usuarios" /></svg><span>Usuarios</span></a>

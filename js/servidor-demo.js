@@ -14,7 +14,9 @@
  * =======================================================================
  */
 
-const CLAVE_ALMACEN = 'sigev-demostracion-v1';
+// La version cambia cuando cambia el esquema de la demostracion, para que
+// los datos guardados de una version anterior se regeneren solos.
+const CLAVE_ALMACEN = 'sigev-demostracion-v2';
 
 /* ============================ FECHAS ============================ */
 
@@ -52,7 +54,11 @@ function semilla() {
   return {
     secuencias: { empleados: 7, gafetes: 6, extintores: 6, equipos: 10, licencias: 5, notificaciones: 0, bitacora: 0, usuarios: 1 },
 
-    usuarios: [{ id: 1, usuario: 'admin', nombre: 'Administrador de la demostracion', correo: '', rol: 'admin', activo: 1, creado_en: ahora(), ultimo_acceso: null }],
+    usuarios: [
+      { id: 1, usuario: 'admin', nombre: 'Administrador del Sistema', correo: 'admin@cfe.mx', rol: 'admin', activo: 1, creado_en: ahora(), ultimo_acceso: null },
+      { id: 2, usuario: 'seguridad', nombre: 'Maria Fernanda Lopez Cruz', correo: 'mf.lopez@cfe.mx', rol: 'seguridad', activo: 1, creado_en: ahora(), ultimo_acceso: null },
+      { id: 3, usuario: 'documentacion', nombre: 'Ana Sofia Herrera Vazquez', correo: 'as.herrera@cfe.mx', rol: 'documentacion', activo: 1, creado_en: ahora(), ultimo_acceso: null },
+    ],
 
     configuracion: {
       dias_criticos: '7',
@@ -407,6 +413,10 @@ function aCSV(filas, columnas) {
 }
 
 export function exportarCSV(modulo) {
+  const modulosPropios = PERMISOS[usuarioEnSesion?.rol] ?? [];
+  if (EXPORTACIONES[modulo] && modulo !== 'bitacora' && !modulosPropios.includes(modulo)) return null;
+  if (modulo === 'bitacora' && usuarioEnSesion?.rol !== 'admin') return null;
+
   if (modulo === 'vigencias') {
     const filas = listarVigencias().map((i) => ({ ...i, modulo: i.modulo_nombre, inicio: i.fecha_inicio ?? '' }));
     return aCSV(filas, [['modulo', 'Elemento'], ['referencia', 'Referencia'], ['descripcion', 'Descripcion'], ['concepto', 'Concepto'], ['inicio', 'Fecha de inicio'], ['fecha', 'Fecha de caducidad'], ['dias', 'Dias restantes'], ['clasificacion', 'Clasificacion'], ['semaforo', 'Semaforo'], ['ubicacion', 'Ubicacion'], ['responsable', 'Responsable']]);
@@ -418,8 +428,34 @@ export function exportarCSV(modulo) {
 
 /* ============================ ENRUTADOR ============================ */
 
-const USUARIO_DEMO = { id: 1, usuario: 'admin', nombre: 'Administrador de la demostracion', correo: '', rol: 'admin', activo: true, ultimo_acceso: null, creado_en: ahora() };
-let sesionAbierta = false;
+/**
+ * Reparto de modulos por perfil (espejo de PERMISOS en src/config.js).
+ */
+const PERMISOS = {
+  admin: ['extintores', 'equipos', 'gafetes', 'licencias', 'empleados'],
+  seguridad: ['extintores', 'equipos', 'empleados'],
+  documentacion: ['gafetes', 'licencias', 'empleados'],
+  consulta: [],
+};
+
+const ROLES = {
+  admin: 'Administrador',
+  seguridad: 'Jefe de Seguridad',
+  documentacion: 'Encargado de Documentacion',
+};
+
+/**
+ * Cuentas de la demostracion. La contrasena coincide con el usuario para que
+ * cualquiera pueda entrar con cada perfil y ver como cambia el menu.
+ */
+const CLAVES_DEMO = { admin: 'admin', seguridad: 'seguridad', documentacion: 'documentacion' };
+
+let usuarioEnSesion = null;
+
+/** El usuario de la sesion, con la lista de modulos que le corresponde. */
+function conPermisos(u) {
+  return { ...u, activo: !!u.activo, modulos: PERMISOS[u.rol] ?? [] };
+}
 
 /**
  * Atiende una peticion con la misma forma que la API real.
@@ -434,19 +470,47 @@ export async function atender(metodo, rutaCompleta, cuerpo = {}) {
   const id = partes[2] ? Number(partes[2]) : null;
 
   /* --- Sesion --- */
-  if (ruta === '/api/sesion') return { usuario: sesionAbierta ? USUARIO_DEMO : null, roles: {} };
+  if (ruta === '/api/sesion') {
+    return {
+      usuario: usuarioEnSesion ? conPermisos(usuarioEnSesion) : null,
+      roles: ROLES,
+      permisos: PERMISOS,
+    };
+  }
   if (ruta === '/api/sesion/iniciar') {
-    if (String(cuerpo.usuario).trim() !== 'admin' || String(cuerpo.contrasena) !== 'demo') {
-      throw { codigo: 401, mensaje: 'Usuario o contrasena incorrectos (demostracion: admin / demo)' };
+    const nombre = String(cuerpo.usuario ?? '').trim().toLowerCase();
+    const clave = String(cuerpo.contrasena ?? '');
+    const cuenta = datos.usuarios.find((u) => u.usuario === nombre);
+    if (!cuenta || CLAVES_DEMO[nombre] !== clave) {
+      throw {
+        codigo: 401,
+        mensaje: 'Usuario o contrasena incorrectos. En la demostracion la contrasena es igual al usuario (admin / admin).',
+      };
     }
-    sesionAbierta = true;
-    registrarBitacora('Inicio de sesion', 'Seguridad', 'Modo demostracion');
+    usuarioEnSesion = cuenta;
+    cuenta.ultimo_acceso = ahora();
+    registrarBitacora('Inicio de sesion', 'Seguridad', `Perfil: ${ROLES[cuenta.rol] ?? cuenta.rol}`);
     guardar();
-    return { usuario: USUARIO_DEMO };
+    return { usuario: conPermisos(cuenta) };
   }
   if (ruta === '/api/sesion/cerrar') {
-    sesionAbierta = false;
+    usuarioEnSesion = null;
     return { cerrada: true };
+  }
+
+  /* --- Control de acceso por modulo --- */
+  const modulosPropios = PERMISOS[usuarioEnSesion?.rol] ?? [];
+  if (['empleados', 'gafetes', 'extintores', 'equipos', 'licencias'].includes(recurso) && !modulosPropios.includes(recurso)) {
+    throw { codigo: 403, mensaje: 'Su perfil no tiene asignado ese modulo' };
+  }
+  if (['usuarios', 'bitacora'].includes(recurso) && usuarioEnSesion?.rol !== 'admin') {
+    throw { codigo: 403, mensaje: 'Esta seccion es exclusiva del Administrador' };
+  }
+  if (ruta === '/api/configuracion' && metodo === 'PUT' && usuarioEnSesion?.rol !== 'admin') {
+    throw { codigo: 403, mensaje: 'Esta seccion es exclusiva del Administrador' };
+  }
+  if (ruta === '/api/tipos-alerta' && metodo === 'PUT' && usuarioEnSesion?.rol !== 'admin') {
+    throw { codigo: 403, mensaje: 'Esta seccion es exclusiva del Administrador' };
   }
 
   /* --- Tablero --- */
