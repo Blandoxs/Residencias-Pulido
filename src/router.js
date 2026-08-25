@@ -7,7 +7,7 @@ export class Router {
     this.rutas = [];
   }
 
-  agregar(metodo, patron, manejador, rol = null) {
+  agregar(metodo, patron, manejador, permiso = null) {
     const nombres = [];
     const expresion = new RegExp(
       `^${patron
@@ -21,21 +21,21 @@ export class Router {
         })
         .join('/')}$`
     );
-    this.rutas.push({ metodo, expresion, nombres, manejador, rol });
+    this.rutas.push({ metodo, expresion, nombres, manejador, permiso });
     return this;
   }
 
-  get(p, h, rol) {
-    return this.agregar('GET', p, h, rol);
+  get(p, h, permiso) {
+    return this.agregar('GET', p, h, permiso);
   }
-  post(p, h, rol) {
-    return this.agregar('POST', p, h, rol);
+  post(p, h, permiso) {
+    return this.agregar('POST', p, h, permiso);
   }
-  put(p, h, rol) {
-    return this.agregar('PUT', p, h, rol);
+  put(p, h, permiso) {
+    return this.agregar('PUT', p, h, permiso);
   }
-  delete(p, h, rol) {
-    return this.agregar('DELETE', p, h, rol);
+  delete(p, h, permiso) {
+    return this.agregar('DELETE', p, h, permiso);
   }
 
   buscar(metodo, ruta) {

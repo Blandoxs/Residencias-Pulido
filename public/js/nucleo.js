@@ -36,11 +36,17 @@ export async function detectarModo() {
   return true;
 }
 
-const NIVEL = { admin: 3, supervisor: 2, consulta: 1 };
+/**
+ * Permisos por modulo, no por jerarquia: el Jefe de Seguridad y el
+ * Encargado de Documentacion son pares que atienden modulos distintos.
+ */
+export function puede(modulo) {
+  return (estado.usuario?.modulos ?? []).includes(modulo);
+}
 
-/** Verifica si el usuario en sesion alcanza el rol indicado. */
-export function puede(rolMinimo) {
-  return (NIVEL[estado.usuario?.rol] ?? 0) >= (NIVEL[rolMinimo] ?? 99);
+/** Solo el Administrador entra a Usuarios, Configuracion y Bitacora. */
+export function esAdmin() {
+  return estado.usuario?.rol === 'admin';
 }
 
 /* ============================ API ============================ */

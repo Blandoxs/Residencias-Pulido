@@ -153,6 +153,19 @@ CREATE TABLE IF NOT EXISTS licencias (
   creado_en         TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
+-- Control de los correos ya enviados: evita repetir el mismo aviso.
+-- La clave es modulo:registro:concepto:fecha_objetivo:umbral
+CREATE TABLE IF NOT EXISTS avisos_correo (
+  clave         TEXT PRIMARY KEY,
+  modulo        TEXT NOT NULL,
+  registro_id   INTEGER NOT NULL,
+  referencia    TEXT NOT NULL,
+  umbral        INTEGER NOT NULL,
+  destinatarios TEXT NOT NULL DEFAULT '',
+  resultado     TEXT NOT NULL DEFAULT '',
+  enviado_en    TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
 -- Umbrales de aviso configurables por tipo de elemento
 CREATE TABLE IF NOT EXISTS tipos_alerta (
   clave        TEXT PRIMARY KEY,
@@ -185,6 +198,11 @@ function agregarColumna(tabla, columna, definicion) {
 agregarColumna('equipos', 'fecha_inicio', 'TEXT');
 agregarColumna('equipos', 'tipo_alerta', "TEXT NOT NULL DEFAULT 'equipo'");
 
+// Los perfiles dejaron de ser jerarquicos (consulta < supervisor < admin) y
+// pasaron a repartirse por modulo. El antiguo "supervisor" administraba todo,
+// asi que se convierte en Jefe de Seguridad, que es una asignacion menor.
+bd.prepare("UPDATE usuarios SET rol = 'seguridad' WHERE rol = 'supervisor'").run();
+
 /* ------------------------------------------------------------------ */
 /* Configuracion por defecto                                           */
 /* ------------------------------------------------------------------ */
@@ -198,6 +216,12 @@ const CONFIG_DEFECTO = {
   zona: 'Division de Distribucion Norte',
   municipio: 'Hidalgo del Parral, Chihuahua',
   area_responsable: 'Seguridad e Higiene',
+  // Direccion desde la que se abre el sistema. Se usa para armar el enlace
+  // directo a la ficha del elemento dentro de los correos de aviso.
+  url_sistema: process.env.SIGEV_URL ?? `http://${config.host}:${config.puerto}`,
+  // Umbrales (en dias) en los que se envia correo, ademas de los criticos
+  // configurados para cada tipo de elemento.
+  umbrales_correo: '30,15,7',
 };
 
 const insConfig = bd.prepare('INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)');

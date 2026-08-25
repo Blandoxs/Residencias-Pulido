@@ -1,9 +1,12 @@
-/**
+﻿/**
  * Definicion de todos los servicios (API REST) del sistema.
- * Cada ruta indica el rol minimo requerido:
- *   consulta   -> solo lectura
- *   supervisor -> alta, cambio y baja de registros
- *   admin      -> usuarios, configuracion y bitacora
+ *
+ * El acceso no es jerarquico: cada ruta declara el permiso que exige.
+ *   'lectura'             -> cualquier usuario con sesion (panel, vigencias, alertas)
+ *   { modulo: 'gafetes' } -> solo los perfiles que administran ese modulo
+ *   'admin'               -> usuarios, configuracion y bitacora
+ *
+ * El reparto de modulos por perfil esta en PERMISOS (src/config.js).
  */
 import { Router } from './router.js';
 import {
@@ -12,9 +15,9 @@ import {
 } from './bd.js';
 import { listarVigencias, resumenVigencias, SEMAFORO } from './vigencias.js';
 import { revisarVencimientos } from './alertas.js';
-import { crearHash, iniciarSesion, cerrarSesion, publico, exigirRol } from './auth.js';
+import { crearHash, iniciarSesion, cerrarSesion, publico, exigirPermiso } from './auth.js';
 import { ErrorApp, txt, num, esFecha, aCSV, hoyISO, estadoVigencia } from './util.js';
-import { ROLES } from './config.js';
+import { ROLES, ROLES_ASIGNABLES, PERMISOS, NOMBRE_MODULO } from './config.js';
 
 export const api = new Router();
 
@@ -77,6 +80,10 @@ function obtenerOFallar(tabla, id) {
 function registrarEntidad({ ruta, tabla, modulo, campos, consultaSQL, orden = 'id DESC', busqueda = [] }) {
   const nombres = campos.map((c) => c.nombre);
 
+  // Cada modulo queda reservado al perfil que lo tiene asignado (ver
+  // PERMISOS en src/config.js). El Administrador los tiene todos.
+  const permiso = { modulo: ruta };
+
   api.get(`/api/${ruta}`, ({ query }) => {
     let sql = consultaSQL ?? `SELECT * FROM ${tabla}`;
     const valores = [];
@@ -89,9 +96,9 @@ function registrarEntidad({ ruta, tabla, modulo, campos, consultaSQL, orden = 'i
     if (filtros.length) sql += ` WHERE ${filtros.join(' AND ')}`;
     sql += ` ORDER BY ${orden}`;
     return bd.prepare(sql).all(...valores);
-  }, 'consulta');
+  }, permiso);
 
-  api.get(`/api/${ruta}/:id`, ({ params }) => obtenerOFallar(tabla, params.id), 'consulta');
+  api.get(`/api/${ruta}/:id`, ({ params }) => obtenerOFallar(tabla, params.id), permiso);
 
   api.post(`/api/${ruta}`, ({ cuerpo, usuario }) => {
     const datos = sanear(campos, cuerpo);
@@ -99,7 +106,7 @@ function registrarEntidad({ ruta, tabla, modulo, campos, consultaSQL, orden = 'i
     const r = ejecutar(bd.prepare(sql), nombres.map((n) => datos[n]), `Ya existe un registro con esa clave en ${modulo}`);
     bitacora(usuario.usuario, 'Alta', modulo, `Registro ${Number(r.lastInsertRowid)} creado`);
     return obtenerOFallar(tabla, Number(r.lastInsertRowid));
-  }, 'supervisor');
+  }, permiso);
 
   api.put(`/api/${ruta}/:id`, ({ params, cuerpo, usuario }) => {
     obtenerOFallar(tabla, params.id);
@@ -110,7 +117,7 @@ function registrarEntidad({ ruta, tabla, modulo, campos, consultaSQL, orden = 'i
     ejecutar(bd.prepare(sql), [...claves.map((k) => datos[k]), num(params.id)], `Ya existe otro registro con esa clave en ${modulo}`);
     bitacora(usuario.usuario, 'Modificacion', modulo, `Registro ${params.id} actualizado`);
     return obtenerOFallar(tabla, params.id);
-  }, 'supervisor');
+  }, permiso);
 
   api.delete(`/api/${ruta}/:id`, ({ params, usuario }) => {
     obtenerOFallar(tabla, params.id);
@@ -118,7 +125,7 @@ function registrarEntidad({ ruta, tabla, modulo, campos, consultaSQL, orden = 'i
     bd.prepare('DELETE FROM notificaciones WHERE modulo = ? AND registro_id = ?').run(ruta, num(params.id));
     bitacora(usuario.usuario, 'Baja', modulo, `Registro ${params.id} eliminado`);
     return { eliminado: true };
-  }, 'supervisor');
+  }, permiso);
 }
 
 /* ================================================================== */
@@ -139,7 +146,12 @@ api.post('/api/sesion/cerrar', async ({ token, cookie, usuario }) => {
   return { cerrada: true };
 });
 
-api.get('/api/sesion', ({ usuario }) => ({ usuario: usuario ?? null, roles: ROLES }));
+api.get('/api/sesion', ({ usuario }) => ({
+  usuario: usuario ?? null,
+  roles: ROLES,
+  permisos: PERMISOS,
+  nombresModulo: NOMBRE_MODULO,
+}));
 
 /* ================================================================== */
 /* Panel principal                                                     */
@@ -219,7 +231,7 @@ api.get('/api/panel', () => {
     atencion: items.filter((i) => i.clasificacion !== 'vigente').slice(0, 12),
     configuracion: leerConfiguracion(),
   };
-}, 'consulta');
+}, 'lectura');
 
 /** Resumen ligero para la cinta de estado operativo de la barra superior. */
 api.get('/api/resumen', () => ({
@@ -228,7 +240,7 @@ api.get('/api/resumen', () => ({
   ultimaRevision:
     bd.prepare("SELECT fecha FROM bitacora WHERE accion = 'Revision de vencimientos' ORDER BY id DESC LIMIT 1").get()
       ?.fecha ?? null,
-}), 'consulta');
+}), 'lectura');
 
 /* ================================================================== */
 /* Catalogos auxiliares (para los formularios)                         */
@@ -257,7 +269,7 @@ api.get('/api/catalogos', () => ({
   tiposAlerta: tiposAlerta(),
   semaforo: SEMAFORO,
   departamentos: bd.prepare("SELECT DISTINCT departamento AS d FROM empleados WHERE departamento <> '' ORDER BY d").all().map((r) => r.d),
-}), 'consulta');
+}), 'lectura');
 
 /* ================================================================== */
 /* Empleados                                                           */
@@ -322,7 +334,7 @@ api.get('/api/gafetes/:id/credencial', ({ params }) => {
     configuracion: leerConfiguracion(),
     vigencia: estadoVigencia(g.fecha_vencimiento, umbralesPorTipo().gafete ?? umbrales()),
   };
-}, 'consulta');
+}, { modulo: 'gafetes' });
 
 /* ================================================================== */
 /* Extintores                                                          */
@@ -416,7 +428,7 @@ registrarEntidad({
 /* Tipos de elemento y sus umbrales de aviso                           */
 /* ================================================================== */
 
-api.get('/api/tipos-alerta', () => tiposAlerta(), 'consulta');
+api.get('/api/tipos-alerta', () => tiposAlerta(), 'lectura');
 
 api.put('/api/tipos-alerta', ({ cuerpo, usuario }) => {
   const claves = tiposAlerta().map((t) => t.clave);
@@ -457,7 +469,7 @@ api.get('/api/vigencias', ({ query }) => {
     );
   }
   return { items, resumen: resumenVigencias(), umbrales: umbrales() };
-}, 'consulta');
+}, 'lectura');
 
 /* ================================================================== */
 /* Notificaciones                                                      */
@@ -474,28 +486,28 @@ api.get('/api/notificaciones', ({ query }) => {
     .all();
   const sinLeer = bd.prepare('SELECT COUNT(*) AS n FROM notificaciones WHERE leida = 0').get().n;
   return { items: filas, sinLeer };
-}, 'consulta');
+}, 'lectura');
 
 api.post('/api/notificaciones/:id/leer', ({ params }) => {
   bd.prepare('UPDATE notificaciones SET leida = 1 WHERE id = ?').run(num(params.id, -1));
   return { ok: true };
-}, 'consulta');
+}, 'lectura');
 
 api.post('/api/notificaciones/leer-todas', ({ usuario }) => {
   const r = bd.prepare('UPDATE notificaciones SET leida = 1 WHERE leida = 0').run();
   bitacora(usuario.usuario, 'Notificaciones', 'Alertas', `${r.changes} notificaciones marcadas como leidas`);
   return { actualizadas: r.changes };
-}, 'consulta');
+}, 'lectura');
 
 api.delete('/api/notificaciones/:id', ({ params }) => {
   bd.prepare('DELETE FROM notificaciones WHERE id = ?').run(num(params.id, -1));
   return { eliminada: true };
-}, 'supervisor');
+}, 'admin');
 
 api.post('/api/alertas/revisar', async ({ usuario }) => {
   const r = await revisarVencimientos(`manual (${usuario.usuario})`);
   return r;
-}, 'consulta');
+}, 'lectura');
 
 /* ================================================================== */
 /* Usuarios del sistema                                                */
@@ -514,7 +526,7 @@ api.post('/api/usuarios', ({ cuerpo, usuario }) => {
     ],
     cuerpo
   );
-  if (!ROLES[datos.rol]) throw new ErrorApp('Rol no valido', 400);
+  if (!ROLES_ASIGNABLES.includes(datos.rol)) throw new ErrorApp('Perfil no valido', 400);
   const contrasena = txt(cuerpo.contrasena);
   if (contrasena.length < 6) throw new ErrorApp('La contrasena debe tener al menos 6 caracteres', 400);
 
@@ -539,7 +551,7 @@ api.put('/api/usuarios/:id', ({ params, cuerpo, usuario }) => {
     cuerpo,
     true
   );
-  if (datos.rol && !ROLES[datos.rol]) throw new ErrorApp('Rol no valido', 400);
+  if (datos.rol && !ROLES_ASIGNABLES.includes(datos.rol)) throw new ErrorApp('Perfil no valido', 400);
   if (actual.usuario === 'admin' && datos.activo === 0) {
     throw new ErrorApp('No es posible desactivar la cuenta principal de administrador', 400);
   }
@@ -574,13 +586,13 @@ api.post('/api/perfil/contrasena', ({ cuerpo, usuario }) => {
   bd.prepare('UPDATE usuarios SET hash = ? WHERE id = ?').run(crearHash(nueva), usuario.id);
   bitacora(usuario.usuario, 'Seguridad', 'Usuarios', 'Cambio de contrasena propia');
   return { ok: true };
-}, 'consulta');
+}, 'lectura');
 
 /* ================================================================== */
 /* Configuracion                                                       */
 /* ================================================================== */
 
-api.get('/api/configuracion', () => leerConfiguracion(), 'consulta');
+api.get('/api/configuracion', () => leerConfiguracion(), 'lectura');
 
 api.put('/api/configuracion', ({ cuerpo, usuario }) => {
   const permitidas = [
@@ -706,8 +718,13 @@ const EXPORTACIONES = {
   },
 };
 
-api.get('/api/exportar/:modulo', ({ params }) => {
+api.get('/api/exportar/:modulo', ({ params, usuario }) => {
   const modulo = params.modulo;
+
+  // Exportar un catalogo exige el mismo permiso que consultarlo.
+  if (NOMBRE_MODULO[modulo]) exigirPermiso(usuario, { modulo });
+  if (modulo === 'bitacora') exigirPermiso(usuario, 'admin');
+
   if (modulo === 'vigencias') {
     const filas = listarVigencias().map((i) => ({
       modulo: i.modulo_nombre,
@@ -746,6 +763,6 @@ api.get('/api/exportar/:modulo', ({ params }) => {
     __archivo: `${modulo}_${hoyISO()}.csv`,
     contenido: aCSV(bd.prepare(def.sql).all(), def.columnas),
   };
-}, 'consulta');
+}, 'lectura');
 
-export { exigirRol };
+

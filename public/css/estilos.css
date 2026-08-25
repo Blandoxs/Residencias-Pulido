@@ -143,6 +143,20 @@ html, body {
   text-transform: uppercase; color: #8a6800; margin-bottom: 7px;
 }
 .acceso__demo p { margin: 0 0 12px; font-size: .8rem; line-height: 1.55; color: var(--gris); }
+.acceso__perfiles { margin-bottom: 8px !important; }
+
+.acceso__cuentas { display: grid; gap: 6px; }
+.acceso__cuentas button {
+  display: flex; align-items: baseline; gap: 9px; width: 100%; text-align: left;
+  background: #fff; border: 1px solid var(--linea); padding: 9px 11px; cursor: pointer;
+  font-family: var(--texto); font-size: .78rem; color: var(--gris);
+  transition: border-color .14s, background .14s;
+}
+.acceso__cuentas button:hover { border-color: var(--tinta); background: var(--panel); color: var(--tinta); }
+.acceso__cuentas b {
+  font-family: var(--mono); font-size: .76rem; color: var(--verde); letter-spacing: .04em;
+  min-width: 108px;
+}
 
 .cinta__demo {
   font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; text-transform: uppercase;

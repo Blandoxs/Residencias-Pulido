@@ -1,4 +1,4 @@
-# SIGEV — Página de Gestión y Monitoreo de Caducidades en Equipos y Documentos de Seguridad
+﻿# SIGEV — Página de Gestión y Monitoreo de Caducidades en Equipos y Documentos de Seguridad
 
 Plataforma web para la **Comisión Federal de Electricidad, Zona Parral, Chihuahua**, que registra
 y monitorea el **ciclo de vigencia completo** —de la fecha de inicio a la de caducidad— de los
@@ -76,13 +76,29 @@ set SIGEV_ADMIN_PASS=SuContrasenaSegura
 npm start
 ```
 
-Las demás cuentas se crean desde el módulo **Usuarios** eligiendo su perfil:
+Las demás cuentas se crean desde el módulo **Usuarios** eligiendo su perfil.
 
-| Perfil        | Puede hacer                                                    |
-|---------------|-----------------------------------------------------------------|
-| Administrador | Todo: usuarios, configuración, bitácora y catálogos              |
-| Supervisor    | Alta, cambio y baja de gafetes, extintores, equipo y personal     |
-| Consulta      | Solo lectura de catálogos, vigencias y alertas                    |
+### Perfiles y reparto de módulos
+
+El acceso **no es jerárquico**: el Jefe de Seguridad y el Encargado de Documentación son pares
+que atienden elementos distintos. El menú se arma según el perfil de quien entra.
+
+| Sección del menú | Módulo | Jefe de Seguridad | Enc. de Documentación | Administrador |
+|---|---|:--:|:--:|:--:|
+| 01 · Operación | Panel, Vigencias, Alertas | ✔ | ✔ | ✔ |
+| 02 · Elementos | Extintores | ✔ | — | ✔ |
+| 02 · Elementos | Botiquines y arneses | ✔ | — | ✔ |
+| 02 · Elementos | Gafetes | — | ✔ | ✔ |
+| 02 · Elementos | Licencias de conducir | — | ✔ | ✔ |
+| 03 · Padrón | Personal | ✔ | ✔ | ✔ |
+| 04 · Administración | Usuarios, Configuración, Bitácora | — | — | ✔ |
+
+El permiso se comprueba **en el servidor**, no solo en la interfaz: si un perfil escribe a mano
+la dirección de un módulo ajeno, la API responde 403 y el sistema lo regresa al Panel.
+
+> El nombre del perfil **Encargado de Documentación** quedó pendiente de definir en el
+> anteproyecto. Para cambiarlo basta con editar la tabla `ROLES` en `src/config.js`
+> y su etiqueta en `public/js/app.js`.
 
 ---
 
@@ -147,28 +163,52 @@ si el registro se renueva y cambia su fecha, el ciclo de avisos vuelve a iniciar
 
 Las alertas se muestran en la **campana** de la barra superior y en la vista de Notificaciones.
 
-### Envío de correo al administrador (opcional)
+### Aviso por correo en cada umbral
 
-Además del aviso dentro del sistema, se puede enviar un concentrado por correo:
+Junto con la alerta interna, el sistema **envía un correo** cuando el elemento cruza uno de sus
+umbrales de aviso. Los umbrales son los generales —**30, 15 y 7 días**, configurables— más los
+propios de cada tipo de elemento (60 y 15 para licencias, 45 y 15 para arneses), y un aviso
+adicional el día en que el elemento queda **vencido**.
 
-1. En **Configuración** capture el *Correo del administrador* y active *Envío de alertas por correo*.
-   También reciben el aviso todos los usuarios con perfil Administrador que tengan correo.
-2. Instale el paquete de correo y defina el servidor SMTP antes de arrancar:
+Cada correo llega a tres destinos:
+
+| Destinatario | Cómo se obtiene |
+|---|---|
+| El **trabajador** dueño o responsable del elemento | Correo capturado en su ficha de Personal |
+| El **perfil encargado** del módulo | Jefe de Seguridad para extintores, botiquines y arneses; Encargado de Documentación para gafetes y licencias |
+| El **Administrador**, siempre | Todas las cuentas con perfil Administrador, más el correo capturado en Configuración |
+
+El mensaje incluye el nombre del trabajador, el tipo de elemento con su folio o código, la fecha
+de vencimiento, los días restantes y un **enlace directo a la ficha del elemento** dentro del
+sistema (`.../#/extintores?ficha=12`), que la abre en cuanto se inicia sesión.
+
+El envío se engancha al mismo ciclo de revisión (arranque, cada 6 horas y el botón *Revisar
+vencimientos*) y se apoya en la misma lógica de clave única: cada combinación de
+`elemento + fecha + umbral` se envía **una sola vez**, aunque la revisión corra cada 6 horas.
+El registro queda en la tabla `avisos_correo` con la lista de destinatarios y el resultado.
+
+**Para activarlo en el servidor de producción:**
 
 ```bash
 npm install nodemailer
 ```
 
 ```bash
-set SMTP_HOST=smtp.oficina.gob.mx
+set SMTP_HOST=smtp.cfe.mx
 set SMTP_PORT=587
-set SMTP_USER=alertas@cfe.mx
-set SMTP_PASS=su_contrasena
+set SMTP_USER=alertas.parral@cfe.mx
+set SMTP_PASS=la_contrasena
+set SIGEV_URL=http://servidor-tics:3000
 npm start
 ```
 
-Si no se configura SMTP el sistema sigue funcionando con normalidad y las alertas
-quedan únicamente en la bandeja de notificaciones.
+Después, en **Configuración**, active *Envío de alertas por correo* y capture el correo del
+administrador. Las credenciales se leen de variables de entorno y **nunca se guardan en el
+repositorio**; el punto exacto donde se configuran está marcado con un `TODO` en
+`src/config.js` y en `src/alertas.js`.
+
+Si no hay SMTP configurado, el sistema sigue operando con normalidad: registra el motivo en
+`avisos_correo` y conserva las alertas en la bandeja interna.
 
 ---
 
@@ -217,7 +257,7 @@ detecta al arrancar si hay un servidor detrás:
 |---|---|---|
 | Datos | SQLite en `datos/sigev.db` | `localStorage` del navegador |
 | API | `src/api.js` sobre Node | `public/js/servidor-demo.js` |
-| Sesión | Token en cookie HttpOnly | Simulada (`admin` / `demo`) |
+| Sesión | Token en cookie HttpOnly | Simulada, con los tres perfiles |
 | Correo | SMTP opcional | No disponible |
 | Interfaz, semáforo y motor de vigencias | **Los mismos** | **Los mismos** |
 
@@ -225,7 +265,10 @@ Cuando corre sin servidor lo advierte en la pantalla de acceso y con una marca
 **DEMOSTRACIÓN** en la cinta de estado, para que no se confunda con el sistema en operación.
 Las vistas y los formularios no se duplican: solo se sustituye la capa que atiende la API.
 
-**Demostración en línea:** https://blandoxs.github.io/Residencias-Pulido/ (acceso `admin` / `demo`)
+**Demostración en línea:** https://blandoxs.github.io/Residencias-Pulido/
+
+Se puede entrar con cualquiera de los tres perfiles para ver cómo cambia el menú. La contraseña
+es igual al usuario: `admin` / `admin`, `seguridad` / `seguridad` y `documentacion` / `documentacion`.
 
 Para republicarla después de cambiar la interfaz, con los cambios ya confirmados:
 
@@ -264,6 +307,7 @@ No hay que tocar el código.
 | `licencias` | Número, titular, tipo, ámbito, autoridad emisora, restricciones | `fecha_inicio` → `fecha_vencimiento` |
 | `tipos_alerta` | Los cinco elementos con su anticipación (`dias_proximo`, `dias_critico`) | — |
 | `notificaciones` | Alertas generadas, severidad y estado de lectura | — |
+| `avisos_correo` | Correos ya enviados (elemento + fecha + umbral), destinatarios y resultado | — |
 | `configuracion` | Datos del centro de trabajo y correo | — |
 | `bitacora` | Auditoría de altas, cambios, bajas y accesos | — |
 

@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config, RAIZ } from './src/config.js';
 import { api } from './src/api.js';
-import { usuarioDeToken, leerCookie, exigirRol } from './src/auth.js';
+import { usuarioDeToken, leerCookie, exigirPermiso } from './src/auth.js';
 import { programarRevision } from './src/alertas.js';
 import { ErrorApp } from './src/util.js';
 import './src/bd.js';
@@ -106,7 +106,7 @@ const servidor = http.createServer(async (req, res) => {
     const token = leerCookie(req.headers.cookie, 'sigev_sesion');
     const usuario = await usuarioDeToken(token);
 
-    if (coincidencia.rol) exigirRol(usuario, coincidencia.rol);
+    if (coincidencia.permiso) exigirPermiso(usuario, coincidencia.permiso);
 
     const cuerpo = ['POST', 'PUT', 'PATCH'].includes(req.method) ? await leerCuerpo(req) : {};
     const query = Object.fromEntries(url.searchParams);

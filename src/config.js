@@ -20,8 +20,22 @@ export const config = {
   // Cada cuantas horas se ejecuta automaticamente el motor de vencimientos.
   horasRevisionAlertas: Number(process.env.SIGEV_HORAS_REVISION ?? 6),
 
-  // Correo saliente (opcional). Si no se configura, las alertas quedan
-  // unicamente dentro del sistema (bandeja de notificaciones).
+  // ===================================================================
+  // TODO: Configurar aqui la API / credenciales del servicio de correo
+  // (SMTP o API key) al desplegar en el servidor de produccion.
+  // No colocar credenciales en el repositorio: usar variables de entorno.
+  //
+  //   set SMTP_HOST=smtp.cfe.mx
+  //   set SMTP_PORT=587
+  //   set SMTP_USER=alertas.parral@cfe.mx
+  //   set SMTP_PASS=...
+  //   set SMTP_FROM="SIGEV CFE <alertas.parral@cfe.mx>"
+  //   set SIGEV_URL=http://servidor-tics:3000
+  //
+  // El envio requiere el paquete nodemailer (npm install nodemailer).
+  // Si no esta configurado, el sistema sigue operando y las alertas
+  // quedan en la bandeja interna.
+  // ===================================================================
   smtp: {
     host: process.env.SMTP_HOST ?? '',
     puerto: Number(process.env.SMTP_PORT ?? 587),
@@ -32,11 +46,64 @@ export const config = {
   },
 };
 
+/* ==================================================================== */
+/* Roles y permisos                                                     */
+/* ==================================================================== */
+
+/**
+ * Los tres perfiles operativos del sistema. El acceso NO es jerarquico:
+ * el Jefe de Seguridad y el Encargado de Documentacion son pares que
+ * atienden modulos distintos.
+ *
+ * NOTA: el nombre del perfil "documentacion" quedo pendiente de definir;
+ * para cambiarlo basta con editar el texto de esta tabla.
+ */
 export const ROLES = {
   admin: 'Administrador',
-  supervisor: 'Supervisor',
-  consulta: 'Consulta',
+  seguridad: 'Jefe de Seguridad',
+  documentacion: 'Encargado de Documentacion',
+  consulta: 'Consulta (solo lectura)', // perfil heredado de versiones anteriores
 };
 
-/** Jerarquia de permisos: admin > supervisor > consulta */
-export const NIVEL_ROL = { admin: 3, supervisor: 2, consulta: 1 };
+/** Perfiles que se ofrecen al dar de alta un usuario. */
+export const ROLES_ASIGNABLES = ['admin', 'seguridad', 'documentacion'];
+
+/**
+ * Modulos que cada perfil puede administrar (alta, cambio y baja).
+ * La consulta del Panel, Vigencias y Alertas esta abierta a todos los
+ * perfiles porque son vistas de concentrado, no de captura.
+ */
+export const PERMISOS = {
+  admin: ['extintores', 'equipos', 'gafetes', 'licencias', 'empleados'],
+  seguridad: ['extintores', 'equipos', 'empleados'],
+  documentacion: ['gafetes', 'licencias', 'empleados'],
+  consulta: [],
+};
+
+/** Perfil responsable de cada modulo (recibe las alertas por correo). */
+export const RESPONSABLE_MODULO = {
+  extintores: 'seguridad',
+  equipos: 'seguridad',
+  gafetes: 'documentacion',
+  licencias: 'documentacion',
+  empleados: 'admin',
+};
+
+/** Nombre visible de cada modulo, usado en el menu y en los correos. */
+export const NOMBRE_MODULO = {
+  extintores: 'Extintores',
+  equipos: 'Botiquines y arneses',
+  gafetes: 'Gafetes',
+  licencias: 'Licencias de conducir',
+  empleados: 'Personal',
+};
+
+/** true si el perfil puede administrar el modulo indicado. */
+export function puedeModulo(rol, modulo) {
+  return (PERMISOS[rol] ?? []).includes(modulo);
+}
+
+/** Modulos visibles en el menu para un perfil. */
+export function modulosDe(rol) {
+  return PERMISOS[rol] ?? [];
+}

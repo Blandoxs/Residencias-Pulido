@@ -4,7 +4,7 @@
  * La sesion se maneja con un token aleatorio guardado en cookie HttpOnly.
  */
 import crypto from 'node:crypto';
-import { config, NIVEL_ROL } from './config.js';
+import { config, puedeModulo, modulosDe, NOMBRE_MODULO } from './config.js';
 import { ErrorApp } from './util.js';
 
 const PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
@@ -92,17 +92,38 @@ export function publico(fila) {
     nombre: fila.nombre,
     correo: fila.correo,
     rol: fila.rol,
+    modulos: modulosDe(fila.rol),
     activo: !!fila.activo,
     ultimo_acceso: fila.ultimo_acceso,
     creado_en: fila.creado_en,
   };
 }
 
-/** Verifica que el usuario tenga al menos el rol indicado. */
-export function exigirRol(usuario, rolMinimo) {
+/**
+ * Control de acceso por permiso, no por jerarquia.
+ *
+ *   'lectura'            -> cualquier usuario con sesion iniciada
+ *   'admin'              -> solo el Administrador
+ *   { modulo: 'gafetes'} -> perfiles que administran ese modulo
+ */
+export function exigirPermiso(usuario, permiso) {
   if (!usuario) throw new ErrorApp('Sesion no iniciada', 401);
-  if ((NIVEL_ROL[usuario.rol] ?? 0) < (NIVEL_ROL[rolMinimo] ?? 99)) {
-    throw new ErrorApp('No cuenta con permisos para realizar esta accion', 403);
+  if (!permiso || permiso === 'lectura') return;
+
+  if (permiso === 'admin') {
+    if (usuario.rol !== 'admin') {
+      throw new ErrorApp('Esta seccion es exclusiva del Administrador', 403);
+    }
+    return;
+  }
+
+  if (permiso.modulo) {
+    if (!puedeModulo(usuario.rol, permiso.modulo)) {
+      throw new ErrorApp(
+        `Su perfil no tiene asignado el modulo de ${NOMBRE_MODULO[permiso.modulo] ?? permiso.modulo}`,
+        403
+      );
+    }
   }
 }
 

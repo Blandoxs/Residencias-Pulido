@@ -55,7 +55,7 @@ export function listarVigencias() {
   // --- Gafetes de trabajo ------------------------------------------
   const gafetes = bd
     .prepare(
-      `SELECT g.*, e.nombre AS empleado, e.rpe, e.departamento
+      `SELECT g.*, e.nombre AS empleado, e.rpe, e.departamento, e.correo AS correo_empleado
        FROM gafetes g JOIN empleados e ON e.id = g.empleado_id`
     )
     .all();
@@ -71,6 +71,7 @@ export function listarVigencias() {
         descripcion: `${g.empleado} (${g.rpe})`,
         ubicacion: g.departamento,
         responsable: g.empleado,
+        responsable_correo: g.correo_empleado ?? '',
         estado_registro: g.estado,
       },
       g.fecha_emision,
@@ -82,7 +83,7 @@ export function listarVigencias() {
   // --- Extintores --------------------------------------------------
   const extintores = bd
     .prepare(
-      `SELECT x.*, e.nombre AS responsable
+      `SELECT x.*, e.nombre AS responsable, e.correo AS correo_responsable
        FROM extintores x LEFT JOIN empleados e ON e.id = x.responsable_id`
     )
     .all();
@@ -97,6 +98,7 @@ export function listarVigencias() {
       descripcion: `${x.tipo} ${x.capacidad_kg} kg - ${x.ubicacion}`,
       ubicacion: x.ubicacion,
       responsable: x.responsable ?? 'Sin asignar',
+      responsable_correo: x.correo_responsable ?? '',
       estado_registro: x.estado,
     };
     agregar(base, x.fecha_recarga, x.fecha_prox_recarga, 'Recarga');
@@ -106,7 +108,7 @@ export function listarVigencias() {
   // --- Equipo: botiquines, arneses y demas -------------------------
   const equipos = bd
     .prepare(
-      `SELECT q.*, e.nombre AS responsable
+      `SELECT q.*, e.nombre AS responsable, e.correo AS correo_responsable
        FROM equipos q LEFT JOIN empleados e ON e.id = q.responsable_id`
     )
     .all();
@@ -125,6 +127,7 @@ export function listarVigencias() {
       descripcion: `${q.nombre}${q.marca ? ` - ${q.marca}` : ''}`,
       ubicacion: q.ubicacion,
       responsable: q.responsable ?? 'Sin asignar',
+      responsable_correo: q.correo_responsable ?? '',
       estado_registro: q.estado,
     };
     agregar(base, q.fecha_inicio ?? q.fecha_adquisicion, q.fecha_vencimiento, 'Vigencia / caducidad');
@@ -141,7 +144,7 @@ export function listarVigencias() {
   // --- Licencias de conducir ---------------------------------------
   const licencias = bd
     .prepare(
-      `SELECT l.*, e.nombre AS empleado, e.rpe, e.departamento
+      `SELECT l.*, e.nombre AS empleado, e.rpe, e.departamento, e.correo AS correo_empleado
        FROM licencias l JOIN empleados e ON e.id = l.empleado_id`
     )
     .all();
@@ -157,6 +160,7 @@ export function listarVigencias() {
         descripcion: `${l.tipo} (${l.ambito}) - ${l.empleado}`,
         ubicacion: l.departamento,
         responsable: l.empleado,
+        responsable_correo: l.correo_empleado ?? '',
         estado_registro: l.estado,
       },
       l.fecha_inicio,
