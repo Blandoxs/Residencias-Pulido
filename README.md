@@ -87,7 +87,7 @@ que atienden elementos distintos. El menú se arma según el perfil de quien ent
 |---|---|:--:|:--:|:--:|
 | 01 · Operación | Panel, Vigencias, Alertas | ✔ | ✔ | ✔ |
 | 02 · Elementos | Extintores | ✔ | — | ✔ |
-| 02 · Elementos | Botiquines y arneses | ✔ | — | ✔ |
+| 02 · Elementos | Equipo de Seguridad | ✔ | — | ✔ |
 | 02 · Elementos | Gafetes | — | ✔ | ✔ |
 | 02 · Elementos | Licencias de conducir | — | ✔ | ✔ |
 | 03 · Padrón | Personal | ✔ | ✔ | ✔ |
@@ -111,7 +111,7 @@ la dirección de un módulo ajeno, la API responde 403 y el sistema lo regresa a
 | **Alertas** | Bandeja de avisos generados por el sistema | — |
 | **Gafetes** | Credenciales del personal: folio, tipo y nivel de acceso | Emisión → vencimiento |
 | **Extintores** | Agente, capacidad, ubicación y responsable | Recarga y prueba hidrostática |
-| **Botiquines y arneses** | Botiquines, arneses, EPP, herramienta aislada e instrumentos | Inicio → caducidad y revisión periódica |
+| **Equipo de Seguridad** | Botiquines, arneses, EPP, herramienta aislada, instrumentos y equipo contra incendio, con filtro por categoría | Inicio → caducidad y revisión periódica |
 | **Licencias** | Licencias de conducir estatales y federales del personal | Expedición → vencimiento |
 | **Personal** | Trabajadores (RPE, puesto, área, tipo de sangre, fotografía) | — |
 | **Usuarios** | Cuentas de acceso y perfiles | — |
@@ -123,12 +123,19 @@ la dirección de un módulo ajeno, la API responde 403 y el sistema lo regresa a
 - **Semáforo de vigencias**: indicador de tres luces en el panel — rojo (vencido), amarillo
   (próximo a vencer) y verde (vigente) — con el conteo en vivo de cada color.
 - **Línea de vencimientos**: los próximos 180 días en cuatro carriles (gafetes, extintores,
-  botiquines/arneses y licencias) con un marcador por concepto.
+  equipo de seguridad y licencias) con un marcador por concepto.
 - **Credencial imprimible**: en Gafetes → botón *Credencial* se genera el gafete con foto,
   RPE, puesto, tipo de sangre, folio, nivel de acceso y vigencia, listo para imprimir.
 - **Acciones rápidas**: *Renovar* gafete (12 meses), *Recarga* de extintor (reprograma a 12
   meses), *Mantenimiento* de equipo y *Refrendo* de licencia (3 años); cada una reinicia el
   ciclo de avisos con la fecha nueva.
+- **Filtro por categoría** en *Equipo de Seguridad*: junto al buscador, un desplegable con las
+  seis categorías vigentes (botiquín, arnés, EPP, herramienta aislada, instrumento de medición y
+  equipo contra incendio) acota la tabla sin necesidad de separar el módulo en varios.
+- **Menú lateral colapsable**: cada sección (01 · Operación, 02 · Elementos, 03 · Padrón,
+  04 · Administración) se contrae y expande de forma independiente con su flecha, y el estado se
+  recuerda entre sesiones en el navegador de cada usuario. Una sección cerrada nunca bloquea el
+  acceso: si la vista abierta está dentro, su encabezado queda marcado en verde.
 - **Exportación a CSV** (compatible con Excel) en cada módulo.
 - **Fotografía del empleado**: se reduce en el navegador y se guarda en la base de datos.
 
@@ -308,6 +315,12 @@ No hay que tocar el código.
 | `tipos_alerta` | Los cinco elementos con su anticipación (`dias_proximo`, `dias_critico`) | — |
 | `notificaciones` | Alertas generadas, severidad y estado de lectura | — |
 | `avisos_correo` | Correos ya enviados (elemento + fecha + umbral), destinatarios y resultado | — |
+
+La categoría **"Insumo con caducidad"** se retiró del catálogo por ambigua: describía que el
+elemento caducaba, no qué era. Al arrancar, el sistema reasigna los registros que la usaran a la
+categoría que les corresponde según su tipo de alerta (botiquín, arnés o equipo contra incendio;
+en cualquier otro caso, equipo de protección personal) y lo informa en la consola, de modo que
+ningún registro queda con una categoría que ya no existe en el formulario.
 | `configuracion` | Datos del centro de trabajo y correo | — |
 | `bitacora` | Auditoría de altas, cambios, bajas y accesos | — |
 
@@ -380,7 +393,7 @@ y vuelva a iniciar.
 
 | Compromiso del anteproyecto | Dónde se cumple |
 |---|---|
-| Registrar extintores, botiquines, arneses, licencias de conducir y gafetes | Módulos *Gafetes*, *Extintores*, *Botiquines y arneses* y *Licencias* |
+| Registrar extintores, botiquines, arneses, licencias de conducir y gafetes | Módulos *Gafetes*, *Extintores*, *Equipo de Seguridad* y *Licencias* |
 | Variables: número de empleado, nombre, tipo de elemento, fecha de inicio, fecha de caducidad y área de adscripción | Tabla `empleados` (RPE, nombre, departamento) y campos `fecha_inicio` / `fecha_vencimiento` de cada elemento |
 | Interfaz web intuitiva para registrar, consultar y actualizar | Alta, cambio, baja y búsqueda en cada módulo, con acciones rápidas de renovación |
 | Base de datos relacional | SQLite con 10 tablas y llaves foráneas (sección 5) |

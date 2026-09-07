@@ -203,6 +203,31 @@ agregarColumna('equipos', 'tipo_alerta', "TEXT NOT NULL DEFAULT 'equipo'");
 // asi que se convierte en Jefe de Seguridad, que es una asignacion menor.
 bd.prepare("UPDATE usuarios SET rol = 'seguridad' WHERE rol = 'supervisor'").run();
 
+// La categoria "Insumo con caducidad" se retiro del catalogo por ambigua: no
+// describia el elemento, solo que caducaba. Los registros que la usaban se
+// reasignan a la categoria que les corresponde segun su tipo de alerta, para
+// que ninguno quede con una categoria que ya no existe en el formulario.
+const CATEGORIA_RETIRADA = 'Insumo con caducidad';
+const porTipo = {
+  botiquin: 'Botiquin de primeros auxilios',
+  arnes: 'Arnes de seguridad',
+  extintor: 'Equipo contra incendio',
+};
+const heredados = bd
+  .prepare('SELECT id, nombre, tipo_alerta FROM equipos WHERE categoria = ?')
+  .all(CATEGORIA_RETIRADA);
+
+if (heredados.length) {
+  const reasignar = bd.prepare('UPDATE equipos SET categoria = ? WHERE id = ?');
+  for (const e of heredados) {
+    const destino =
+      porTipo[e.tipo_alerta] ??
+      (/extintor/i.test(e.nombre) ? 'Equipo contra incendio' : 'Equipo de proteccion personal');
+    reasignar.run(destino, e.id);
+  }
+  console.log(`  Migrados ${heredados.length} equipo(s) desde la categoria "${CATEGORIA_RETIRADA}".`);
+}
+
 /* ------------------------------------------------------------------ */
 /* Configuracion por defecto                                           */
 /* ------------------------------------------------------------------ */

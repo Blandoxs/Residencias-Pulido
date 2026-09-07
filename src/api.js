@@ -258,7 +258,6 @@ api.get('/api/catalogos', () => ({
     'Herramienta aislada',
     'Instrumento de medicion',
     'Equipo contra incendio',
-    'Insumo con caducidad',
   ],
   tiposLicencia: ['Automovilista', 'Chofer', 'Chofer de servicio publico', 'Federal tipo B', 'Federal tipo C', 'Federal tipo E', 'Motociclista'],
   ambitosLicencia: ['Estatal', 'Federal'],

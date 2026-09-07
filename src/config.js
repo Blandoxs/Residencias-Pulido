@@ -92,7 +92,7 @@ export const RESPONSABLE_MODULO = {
 /** Nombre visible de cada modulo, usado en el menu y en los correos. */
 export const NOMBRE_MODULO = {
   extintores: 'Extintores',
-  equipos: 'Botiquines y arneses',
+  equipos: 'Equipo de Seguridad',
   gafetes: 'Gafetes',
   licencias: 'Licencias de conducir',
   empleados: 'Personal',

@@ -128,9 +128,74 @@ function aplicarPermisos() {
   document.querySelectorAll('[data-modulo]').forEach((n) => n.classList.toggle('oculto', !puede(n.dataset.modulo)));
 
   const elementos = ['extintores', 'equipos', 'gafetes', 'licencias'];
-  const seccion = document.querySelector('[data-seccion="elementos"]');
-  if (seccion) seccion.classList.toggle('oculto', !elementos.some((m) => puede(m)));
+  const hayElementos = elementos.some((m) => puede(m));
+  document.querySelectorAll('[data-seccion="elementos"]').forEach((n) => n.classList.toggle('oculto', !hayElementos));
 }
+
+/* ==================== MENU COLAPSABLE ==================== */
+
+// Preferencia visual de cada usuario, no un dato del sistema: se guarda en
+// el navegador para que el menu conserve su forma entre sesiones.
+const CLAVE_MENU = 'sigev-secciones-colapsadas';
+
+function leerColapsadas() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_MENU));
+    return guardado && typeof guardado === 'object' ? guardado : {};
+  } catch {
+    return {};
+  }
+}
+
+function guardarColapsadas(estadoSecciones) {
+  try {
+    localStorage.setItem(CLAVE_MENU, JSON.stringify(estadoSecciones));
+  } catch {
+    /* almacenamiento bloqueado: el menu sigue funcionando en esta sesion */
+  }
+}
+
+function pintarSeccion(encabezado, grupo, colapsada) {
+  encabezado.setAttribute('aria-expanded', String(!colapsada));
+  grupo.classList.toggle('colapsado', colapsada);
+  grupo.setAttribute('aria-hidden', String(colapsada));
+}
+
+/** Marca el encabezado cuando la vista abierta quedo dentro de una seccion cerrada. */
+function marcarSeccionActiva() {
+  document.querySelectorAll('.rail__grupo').forEach((grupo) => {
+    const encabezado = document.querySelector(`.rail__seccion[data-grupo="${grupo.dataset.grupo}"]`);
+    if (!encabezado) return;
+    const contieneActiva = !!grupo.querySelector('a.activo');
+    encabezado.classList.toggle('rail__seccion--activa', contieneActiva && grupo.classList.contains('colapsado'));
+  });
+}
+
+function prepararMenu() {
+  const colapsadas = leerColapsadas();
+
+  document.querySelectorAll('.rail__seccion').forEach((encabezado) => {
+    const clave = encabezado.dataset.grupo;
+    const grupo = document.querySelector(`.rail__grupo[data-grupo="${clave}"]`);
+    if (!grupo) return;
+
+    pintarSeccion(encabezado, grupo, !!colapsadas[clave]);
+
+    encabezado.addEventListener('click', () => {
+      const colapsada = !grupo.classList.contains('colapsado');
+      pintarSeccion(encabezado, grupo, colapsada);
+
+      const actual = leerColapsadas();
+      if (colapsada) actual[clave] = true;
+      else delete actual[clave];
+      guardarColapsadas(actual);
+
+      marcarSeccionActiva();
+    });
+  });
+}
+
+prepararMenu();
 
 /** Vistas que cualquier perfil puede abrir. */
 const VISTAS_ABIERTAS = ['panel', 'vigencias', 'notificaciones'];
@@ -164,6 +229,7 @@ async function navegar() {
   const vista = vistas[nombre] ?? vistas[VISTA_INICIAL];
 
   document.querySelectorAll('.rail a').forEach((a) => a.classList.toggle('activo', a.dataset.vista === nombre));
+  marcarSeccionActiva();
   document.getElementById('rail').classList.remove('abierta');
 
   // Se reemplaza el contenedor para liberar los eventos de la vista anterior.

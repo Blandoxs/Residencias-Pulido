@@ -285,10 +285,42 @@ html, body {
   display: flex; flex-direction: column;
 }
 
+/* Encabezado de seccion: contrae y expande su grupo de enlaces */
 .rail__seccion {
-  display: block; font-family: var(--mono); font-size: .62rem;
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  font-family: var(--mono); font-size: .62rem;
   letter-spacing: .18em; text-transform: uppercase; color: var(--gris);
   padding: 18px 18px 8px;
+  transition: color .14s;
+}
+.rail__seccion:hover { color: #cdd4cf; }
+.rail__seccion span { flex: 1; }
+
+.rail__flecha {
+  width: 13px; height: 13px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2.2;
+  stroke-linecap: round; stroke-linejoin: round;
+  transition: transform .18s ease;
+}
+/* Colapsada: la flecha apunta a la derecha */
+.rail__seccion[aria-expanded="false"] .rail__flecha { transform: rotate(-90deg); }
+
+/* Marca discreta cuando la vista abierta esta dentro de una seccion cerrada */
+.rail__seccion--activa { color: var(--verde-cl); }
+.rail__seccion--activa::before {
+  content: ""; width: 5px; height: 5px; background: var(--verde-cl); flex: none;
+}
+
+.rail__grupo {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows .18s ease;
+}
+.rail__grupo.colapsado { grid-template-rows: 0fr; }
+.rail__enlaces { overflow: hidden; min-height: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rail__grupo, .rail__flecha { transition: none; }
 }
 
 .rail a {
