@@ -54,13 +54,25 @@ const opcionesEmpleados = () =>
  * Pantalla generica de catalogo: herramientas, tabla, alta, cambio y baja.
  */
 async function pantallaCatalogo(cont, cfg) {
+  // El buscador de texto lo resuelve el servidor; los desplegables de la
+  // barra de herramientas afinan el resultado sobre las filas ya cargadas.
   const filtros = { q: '' };
+  for (const f of cfg.filtros ?? []) filtros[f.clave] = '';
 
   async function cargar() {
-    const filas = await api.obtener(`${cfg.ruta}?q=${encodeURIComponent(filtros.q)}`);
+    const todas = await api.obtener(`${cfg.ruta}?q=${encodeURIComponent(filtros.q)}`);
+
+    let filas = todas;
+    for (const f of cfg.filtros ?? []) {
+      if (filtros[f.clave]) filas = filas.filter((r) => String(r[f.campo] ?? '') === filtros[f.clave]);
+    }
+
     cont.__filas = filas;
     cont.querySelector('#tabla-catalogo').innerHTML = tabla(cfg.columnas, filas, 'Sin coincidencias');
-    cont.querySelector('#conteo').textContent = `${filas.length} registro${filas.length === 1 ? '' : 's'}`;
+    cont.querySelector('#conteo').textContent =
+      filas.length === todas.length
+        ? `${filas.length} registro${filas.length === 1 ? '' : 's'}`
+        : `${filas.length} de ${todas.length} registros`;
   }
 
   const botonNuevo = puede(cfg.clave)
@@ -72,6 +84,14 @@ async function pantallaCatalogo(cont, cfg) {
     <div class="herramientas">
       ${icono('buscar', 'ico--sm')}
       <input type="search" id="buscador" placeholder="Buscar..." />
+      ${(cfg.filtros ?? [])
+        .map(
+          (f) => `<select data-filtro="${f.clave}" aria-label="${esc(f.etiqueta)}">
+            <option value="">${esc(f.etiqueta)}</option>
+            ${f.opciones().map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+          </select>`
+        )
+        .join('')}
       <span class="conteo" id="conteo"></span>
     </div>
     <div id="tabla-catalogo"></div>`;
@@ -83,6 +103,13 @@ async function pantallaCatalogo(cont, cfg) {
     filtros.q = buscador.value.trim();
     temporizador = setTimeout(cargar, 220);
   });
+
+  cont.querySelectorAll('[data-filtro]').forEach((sel) =>
+    sel.addEventListener('change', () => {
+      filtros[sel.dataset.filtro] = sel.value;
+      cargar();
+    })
+  );
 
   cont.querySelector('#btn-exportar').onclick = () => descargarCSV(cfg.exportar ?? cfg.clave);
 
@@ -163,7 +190,7 @@ async function pantallaCatalogo(cont, cfg) {
 const NOMBRE_MODULO = {
   gafetes: 'Gafetes',
   extintores: 'Extintores',
-  equipos: 'Botiquin/arnes',
+  equipos: 'Eq. Seguridad',
   licencias: 'Licencias',
 };
 
@@ -683,10 +710,18 @@ export async function equipos(cont, parametros = {}) {
   await pantallaCatalogo(cont, {
     clave: 'equipos',
     ruta: '/api/equipos',
-    titulo: 'Botiquines y arneses',
+    titulo: 'Equipo de Seguridad',
     singular: 'equipo',
     textoNuevo: 'Nuevo equipo',
-    descripcion: 'Botiquines, arneses y demas equipo de seguridad con caducidad o revision periodica.',
+    descripcion: 'Botiquines, arneses, proteccion personal, herramienta aislada e instrumentos con caducidad o revision periodica.',
+    filtros: [
+      {
+        clave: 'categoria',
+        etiqueta: 'Todas las categorias',
+        campo: 'categoria',
+        opciones: () => estado.catalogos.categoriasEquipo,
+      },
+    ],
     columnas: [
       { titulo: 'Codigo', render: (q) => celdaClave(q.codigo, q.serie) },
       { titulo: 'Equipo', render: (q) => `${esc(q.nombre)}<span class="sub">${esc(q.marca)} ${esc(q.modelo)}</span>` },
@@ -962,7 +997,7 @@ export async function usuarios(cont) {
         [
           { modulo: 'Panel, Vigencias y Alertas', seguridad: 1, documentacion: 1, admin: 1 },
           { modulo: 'Extintores', seguridad: 1, documentacion: 0, admin: 1 },
-          { modulo: 'Botiquines y arneses', seguridad: 1, documentacion: 0, admin: 1 },
+          { modulo: 'Equipo de Seguridad', seguridad: 1, documentacion: 0, admin: 1 },
           { modulo: 'Gafetes', seguridad: 0, documentacion: 1, admin: 1 },
           { modulo: 'Licencias de conducir', seguridad: 0, documentacion: 1, admin: 1 },
           { modulo: 'Personal', seguridad: 1, documentacion: 1, admin: 1 },

@@ -37,6 +37,7 @@
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-salir" viewBox="0 0 24 24"><path d="M15 12H4.5M8 8l-4 4 4 4M13.5 4.5h6v15h-6"/></symbol>
   <symbol id="i-llave" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.8"/><path d="M10.4 12.6L19 4l2.6 2.6-1.9 1.9-1.8-1.8-1.9 1.9"/></symbol>
+  <symbol id="i-flecha" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
   <symbol id="i-rayo" viewBox="0 0 24 24"><path d="M13.5 3L6 13.5h5l-1.5 7.5L18 10.5h-5z"/></symbol>
 </svg>
 
@@ -155,24 +156,54 @@
 
   <div class="cuerpo">
     <nav class="rail" id="rail">
-      <span class="rail__seccion">01 · Operacion</span>
-      <a href="#/panel" data-vista="panel"><svg class="ico"><use href="#i-panel" /></svg><span>Panel</span></a>
-      <a href="#/vigencias" data-vista="vigencias"><svg class="ico"><use href="#i-vigencias" /></svg><span>Vigencias</span></a>
-      <a href="#/notificaciones" data-vista="notificaciones"><svg class="ico"><use href="#i-campana" /></svg><span>Alertas</span><i class="rail__contador oculto" id="rail-alertas">0</i></a>
+      <!-- Cada seccion se contrae y expande de forma independiente; el estado
+           se recuerda en el navegador (ver app.js). -->
+      <button class="rail__seccion" type="button" data-grupo="operacion" aria-expanded="true">
+        <span>01 · Operacion</span>
+        <svg class="rail__flecha" aria-hidden="true"><use href="#i-flecha" /></svg>
+      </button>
+      <div class="rail__grupo" data-grupo="operacion">
+        <div class="rail__enlaces">
+          <a href="#/panel" data-vista="panel"><svg class="ico"><use href="#i-panel" /></svg><span>Panel</span></a>
+          <a href="#/vigencias" data-vista="vigencias"><svg class="ico"><use href="#i-vigencias" /></svg><span>Vigencias</span></a>
+          <a href="#/notificaciones" data-vista="notificaciones"><svg class="ico"><use href="#i-campana" /></svg><span>Alertas</span><i class="rail__contador oculto" id="rail-alertas">0</i></a>
+        </div>
+      </div>
 
-      <span class="rail__seccion" data-seccion="elementos">02 · Elementos</span>
-      <a href="#/extintores" data-vista="extintores" data-modulo="extintores"><svg class="ico"><use href="#i-extintor" /></svg><span>Extintores</span></a>
-      <a href="#/equipos" data-vista="equipos" data-modulo="equipos"><svg class="ico"><use href="#i-equipo" /></svg><span>Botiquines y arneses</span></a>
-      <a href="#/gafetes" data-vista="gafetes" data-modulo="gafetes"><svg class="ico"><use href="#i-gafete" /></svg><span>Gafetes</span></a>
-      <a href="#/licencias" data-vista="licencias" data-modulo="licencias"><svg class="ico"><use href="#i-licencia" /></svg><span>Licencias</span></a>
+      <button class="rail__seccion" type="button" data-grupo="elementos" data-seccion="elementos" aria-expanded="true">
+        <span>02 · Elementos</span>
+        <svg class="rail__flecha" aria-hidden="true"><use href="#i-flecha" /></svg>
+      </button>
+      <div class="rail__grupo" data-grupo="elementos" data-seccion="elementos">
+        <div class="rail__enlaces">
+          <a href="#/extintores" data-vista="extintores" data-modulo="extintores"><svg class="ico"><use href="#i-extintor" /></svg><span>Extintores</span></a>
+          <a href="#/equipos" data-vista="equipos" data-modulo="equipos"><svg class="ico"><use href="#i-equipo" /></svg><span>Equipo de Seguridad</span></a>
+          <a href="#/gafetes" data-vista="gafetes" data-modulo="gafetes"><svg class="ico"><use href="#i-gafete" /></svg><span>Gafetes</span></a>
+          <a href="#/licencias" data-vista="licencias" data-modulo="licencias"><svg class="ico"><use href="#i-licencia" /></svg><span>Licencias</span></a>
+        </div>
+      </div>
 
-      <span class="rail__seccion">03 · Padron</span>
-      <a href="#/empleados" data-vista="empleados" data-modulo="empleados"><svg class="ico"><use href="#i-personal" /></svg><span>Personal</span></a>
+      <button class="rail__seccion" type="button" data-grupo="padron" aria-expanded="true">
+        <span>03 · Padron</span>
+        <svg class="rail__flecha" aria-hidden="true"><use href="#i-flecha" /></svg>
+      </button>
+      <div class="rail__grupo" data-grupo="padron">
+        <div class="rail__enlaces">
+          <a href="#/empleados" data-vista="empleados" data-modulo="empleados"><svg class="ico"><use href="#i-personal" /></svg><span>Personal</span></a>
+        </div>
+      </div>
 
-      <span class="rail__seccion" data-rol="admin">04 · Administracion</span>
-      <a href="#/usuarios" data-vista="usuarios" data-rol="admin"><svg class="ico"><use href="#i-usuarios" /></svg><span>Usuarios</span></a>
-      <a href="#/configuracion" data-vista="configuracion" data-rol="admin"><svg class="ico"><use href="#i-config" /></svg><span>Configuracion</span></a>
-      <a href="#/bitacora" data-vista="bitacora" data-rol="admin"><svg class="ico"><use href="#i-bitacora" /></svg><span>Bitacora</span></a>
+      <button class="rail__seccion" type="button" data-grupo="administracion" data-rol="admin" aria-expanded="true">
+        <span>04 · Administracion</span>
+        <svg class="rail__flecha" aria-hidden="true"><use href="#i-flecha" /></svg>
+      </button>
+      <div class="rail__grupo" data-grupo="administracion" data-rol="admin">
+        <div class="rail__enlaces">
+          <a href="#/usuarios" data-vista="usuarios" data-rol="admin"><svg class="ico"><use href="#i-usuarios" /></svg><span>Usuarios</span></a>
+          <a href="#/configuracion" data-vista="configuracion" data-rol="admin"><svg class="ico"><use href="#i-config" /></svg><span>Configuracion</span></a>
+          <a href="#/bitacora" data-vista="bitacora" data-rol="admin"><svg class="ico"><use href="#i-bitacora" /></svg><span>Bitacora</span></a>
+        </div>
+      </div>
 
       <div class="rail__pie">
         <span>SIGEV 1.0</span>

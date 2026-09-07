@@ -568,7 +568,7 @@ export async function atender(metodo, rutaCompleta, cuerpo = {}) {
       tiposExtintor: ['PQS', 'CO2', 'Agua a presion', 'Espuma AFFF', 'Halotron', 'Acetato de potasio'],
       tiposGafete: ['Empleado', 'Contratista', 'Visitante frecuente', 'Prestador de servicio social', 'Residente'],
       nivelesAcceso: ['General', 'Areas energizadas', 'Subestaciones', 'Almacen', 'Total'],
-      categoriasEquipo: ['Botiquin de primeros auxilios', 'Arnes de seguridad', 'Equipo de proteccion personal', 'Herramienta aislada', 'Instrumento de medicion', 'Equipo contra incendio', 'Insumo con caducidad'],
+      categoriasEquipo: ['Botiquin de primeros auxilios', 'Arnes de seguridad', 'Equipo de proteccion personal', 'Herramienta aislada', 'Instrumento de medicion', 'Equipo contra incendio'],
       tiposLicencia: ['Automovilista', 'Chofer', 'Chofer de servicio publico', 'Federal tipo B', 'Federal tipo C', 'Federal tipo E', 'Motociclista'],
       ambitosLicencia: ['Estatal', 'Federal'],
       estadosGafete: ['Activo', 'Suspendido', 'Cancelado', 'En tramite'],
