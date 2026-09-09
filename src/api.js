@@ -17,7 +17,7 @@ import { listarVigencias, resumenVigencias, SEMAFORO } from './vigencias.js';
 import { revisarVencimientos } from './alertas.js';
 import { crearHash, iniciarSesion, cerrarSesion, publico, exigirPermiso } from './auth.js';
 import { ErrorApp, txt, num, esFecha, aCSV, hoyISO, estadoVigencia } from './util.js';
-import { ROLES, ROLES_ASIGNABLES, PERMISOS, NOMBRE_MODULO } from './config.js';
+import { ROLES, ROLES_ASIGNABLES, PERMISOS, NOMBRE_MODULO, CATEGORIAS_EQUIPO } from './config.js';
 
 export const api = new Router();
 
@@ -53,6 +53,16 @@ function sanear(campos, cuerpo, parcial = false) {
     if (c.req && (v === null || v === '')) {
       throw new ErrorApp(`El campo "${c.etiqueta ?? c.nombre}" es obligatorio y debe ser valido`, 400);
     }
+
+    // Campos de catalogo cerrado: se valida contra la lista, no solo en el
+    // formulario, para que tampoco se puedan colar llamando la API directo.
+    if (c.opciones && v !== '' && v !== null && !c.opciones.includes(v)) {
+      throw new ErrorApp(
+        `El valor "${v}" no es una opcion valida de "${c.etiqueta ?? c.nombre}". Opciones: ${c.opciones.join(', ')}`,
+        400
+      );
+    }
+
     datos[c.nombre] = v;
   }
   return datos;
@@ -251,14 +261,7 @@ api.get('/api/catalogos', () => ({
   tiposExtintor: ['PQS', 'CO2', 'Agua a presion', 'Espuma AFFF', 'Halotron', 'Acetato de potasio'],
   tiposGafete: ['Empleado', 'Contratista', 'Visitante frecuente', 'Prestador de servicio social', 'Residente'],
   nivelesAcceso: ['General', 'Areas energizadas', 'Subestaciones', 'Almacen', 'Total'],
-  categoriasEquipo: [
-    'Botiquin de primeros auxilios',
-    'Arnes de seguridad',
-    'Equipo de proteccion personal',
-    'Herramienta aislada',
-    'Instrumento de medicion',
-    'Equipo contra incendio',
-  ],
+  categoriasEquipo: CATEGORIAS_EQUIPO,
   tiposLicencia: ['Automovilista', 'Chofer', 'Chofer de servicio publico', 'Federal tipo B', 'Federal tipo C', 'Federal tipo E', 'Motociclista'],
   ambitosLicencia: ['Estatal', 'Federal'],
   estadosGafete: ['Activo', 'Suspendido', 'Cancelado', 'En tramite'],
@@ -380,7 +383,7 @@ registrarEntidad({
   campos: [
     { nombre: 'codigo', req: true, etiqueta: 'Codigo', max: 30 },
     { nombre: 'nombre', req: true, etiqueta: 'Nombre del equipo' },
-    { nombre: 'categoria', req: true, etiqueta: 'Categoria' },
+    { nombre: 'categoria', req: true, etiqueta: 'Categoria', opciones: CATEGORIAS_EQUIPO },
     { nombre: 'marca' },
     { nombre: 'modelo' },
     { nombre: 'serie' },

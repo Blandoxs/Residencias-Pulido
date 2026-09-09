@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SERVIDOR DE DEMOSTRACION
  * =======================================================================
  * Este modulo NO forma parte del sistema en produccion.
@@ -328,6 +328,19 @@ const OBLIGATORIOS = {
 
 const CLAVE_UNICA = { empleados: 'rpe', gafetes: 'folio', extintores: 'codigo', equipos: 'codigo', licencias: 'numero' };
 
+// Espejo de CATEGORIAS_EQUIPO en src/config.js. "Equipo contra incendio" no
+// esta: ese material se registra en el modulo Extintores.
+const CATEGORIAS_EQUIPO = [
+  'Botiquin de primeros auxilios',
+  'Arnes de seguridad',
+  'Equipo de proteccion personal',
+  'Herramienta aislada',
+  'Instrumento de medicion',
+];
+
+/** Campos de catalogo cerrado que se validan tambien al guardar. */
+const OPCIONES_VALIDAS = { equipos: { categoria: CATEGORIAS_EQUIPO } };
+
 const NUMERICOS = new Set(['empleado_id', 'responsable_id', 'capacidad_kg', 'frecuencia_meses', 'activo']);
 
 function normalizar(cuerpo) {
@@ -343,6 +356,12 @@ function validar(tabla, registro) {
     const v = registro[campo];
     if (v === '' || v === null || v === undefined) {
       throw { codigo: 400, mensaje: `El campo "${etiqueta}" es obligatorio y debe ser valido` };
+    }
+  }
+  for (const [campo, opciones] of Object.entries(OPCIONES_VALIDAS[tabla] ?? {})) {
+    const v = registro[campo];
+    if (v !== '' && v !== null && v !== undefined && !opciones.includes(v)) {
+      throw { codigo: 400, mensaje: `El valor "${v}" no es una opcion valida de "${campo}". Opciones: ${opciones.join(', ')}` };
     }
   }
 }
@@ -568,7 +587,7 @@ export async function atender(metodo, rutaCompleta, cuerpo = {}) {
       tiposExtintor: ['PQS', 'CO2', 'Agua a presion', 'Espuma AFFF', 'Halotron', 'Acetato de potasio'],
       tiposGafete: ['Empleado', 'Contratista', 'Visitante frecuente', 'Prestador de servicio social', 'Residente'],
       nivelesAcceso: ['General', 'Areas energizadas', 'Subestaciones', 'Almacen', 'Total'],
-      categoriasEquipo: ['Botiquin de primeros auxilios', 'Arnes de seguridad', 'Equipo de proteccion personal', 'Herramienta aislada', 'Instrumento de medicion', 'Equipo contra incendio'],
+      categoriasEquipo: CATEGORIAS_EQUIPO,
       tiposLicencia: ['Automovilista', 'Chofer', 'Chofer de servicio publico', 'Federal tipo B', 'Federal tipo C', 'Federal tipo E', 'Motociclista'],
       ambitosLicencia: ['Estatal', 'Federal'],
       estadosGafete: ['Activo', 'Suspendido', 'Cancelado', 'En tramite'],

@@ -111,7 +111,7 @@ la dirección de un módulo ajeno, la API responde 403 y el sistema lo regresa a
 | **Alertas** | Bandeja de avisos generados por el sistema | — |
 | **Gafetes** | Credenciales del personal: folio, tipo y nivel de acceso | Emisión → vencimiento |
 | **Extintores** | Agente, capacidad, ubicación y responsable | Recarga y prueba hidrostática |
-| **Equipo de Seguridad** | Botiquines, arneses, EPP, herramienta aislada, instrumentos y equipo contra incendio, con filtro por categoría | Inicio → caducidad y revisión periódica |
+| **Equipo de Seguridad** | Botiquines, arneses, EPP, herramienta aislada e instrumentos, con filtro por categoría | Inicio → caducidad y revisión periódica |
 | **Licencias** | Licencias de conducir estatales y federales del personal | Expedición → vencimiento |
 | **Personal** | Trabajadores (RPE, puesto, área, tipo de sangre, fotografía) | — |
 | **Usuarios** | Cuentas de acceso y perfiles | — |
@@ -130,8 +130,11 @@ la dirección de un módulo ajeno, la API responde 403 y el sistema lo regresa a
   meses), *Mantenimiento* de equipo y *Refrendo* de licencia (3 años); cada una reinicia el
   ciclo de avisos con la fecha nueva.
 - **Filtro por categoría** en *Equipo de Seguridad*: junto al buscador, un desplegable con las
-  seis categorías vigentes (botiquín, arnés, EPP, herramienta aislada, instrumento de medición y
-  equipo contra incendio) acota la tabla sin necesidad de separar el módulo en varios.
+  cinco categorías vigentes (botiquín, arnés, EPP, herramienta aislada e instrumento de medición)
+  acota la tabla sin necesidad de separar el módulo en varios. El material contra incendio no
+  entra aquí: se registra en el módulo *Extintores*, que lleva su propio ciclo de recarga y
+  prueba hidrostática. La lista vive en `CATEGORIAS_EQUIPO` (`src/config.js`) y la usan tanto los
+  desplegables como la validación del servidor, así que no pueden divergir.
 - **Menú lateral colapsable**: cada sección (01 · Operación, 02 · Elementos, 03 · Padrón,
   04 · Administración) se contrae y expande de forma independiente con su flecha, y el estado se
   recuerda entre sesiones en el navegador de cada usuario. Una sección cerrada nunca bloquea el
@@ -238,15 +241,19 @@ Recidencias Pulido/
 │   ├── index.html         Estructura y biblioteca de iconos SVG
 │   ├── css/estilos.css    Tema institucional (verde CFE, negro y papel)
 │   ├── img/
-│   │   ├── cfe.svg        Logotipo para fondos claros
-│   │   ├── cfe-blanco.svg Logotipo para fondos oscuros (barra y credencial)
+│   │   ├── cfe.png              Logotipo oficial a color (fondos claros)
+│   │   ├── cfe-blanco.png       Logotipo oficial blanco (pantalla de acceso)
+│   │   ├── cfe-marca-blanco.png Marca «CFE» blanca (barra y credencial)
 │   │   └── favicon.svg
 │   └── js/
 │       ├── app.js         Acceso, navegación y cinta de estado
 │       ├── nucleo.js      Cliente de la API y componentes reutilizables
 │       ├── vistas.js      Pantallas de cada módulo
 │       └── servidor-demo.js  Servidor simulado (solo para la demostración en línea)
+├── recursos/
+│   └── logo-oficial-cfe.jpeg    Logotipo oficial del que se derivan los PNG
 ├── scripts/
+│   ├── generar-logos.ps1        Genera las versiones transparentes del logotipo
 │   ├── reiniciar-bd.js
 │   ├── servidor-estatico.js     Prueba local del modo demostración
 │   └── publicar-demostracion.js Publica public/ en la rama gh-pages
@@ -293,11 +300,30 @@ La interfaz sigue el color institucional de la CFE (verde `#00733F`, negro y pap
 lenguaje de **tablero de operación**: retícula estricta, líneas de 1 px, rotulación condensada
 en mayúsculas, cifras monoespaciadas e iconos SVG propios (sin librerías externas).
 
-Los archivos `public/img/cfe.svg` y `public/img/cfe-blanco.svg` son una **composición propia**
-del emblema (marca + rayo + razón social) para uso interno del proyecto, no el archivo oficial.
-Para usar el logotipo institucional basta con **reemplazar esos dos archivos** conservando el
-nombre: uno en versión a color para fondos claros y otro en versión blanca para fondos oscuros.
-No hay que tocar el código.
+El logotipo es el **oficial de la CFE**. Del archivo institucional (que viene sobre fondo claro)
+se derivaron tres versiones con fondo transparente:
+
+| Archivo | Versión | Dónde se usa |
+|---|---|---|
+| `public/img/cfe.png` | Color, logotipo completo | Fondos claros |
+| `public/img/cfe-blanco.png` | Blanca, logotipo completo | Pantalla de acceso |
+| `public/img/cfe-marca-blanco.png` | Blanca, solo la marca «CFE» | Barra superior y credencial |
+
+En la barra superior y en la credencial se usa **solo la marca**, sin el renglón «Comisión Federal
+de Electricidad»: a 27 px de altura ese texto quedaría ilegible. En la pantalla de acceso, donde
+hay espacio, se muestra el logotipo completo con la razón social integrada, por lo que **no se
+repite el nombre por separado**; junto al logotipo solo aparece «SIGEV», que es el nombre del
+sistema, no de la institución.
+
+El original institucional vive en `recursos/logo-oficial-cfe.jpeg`. Las tres versiones se
+regeneran desde ahí —recorta el fondo, separa la marca de la razón social y escala— con:
+
+```bash
+powershell -File scripts/generar-logos.ps1
+```
+
+Si más adelante llega un archivo oficial actualizado, basta con reemplazar el de `recursos/` y
+volver a ejecutar el script; no hay que tocar el código.
 
 ---
 

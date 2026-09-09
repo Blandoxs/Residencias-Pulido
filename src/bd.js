@@ -228,6 +228,59 @@ if (heredados.length) {
   console.log(`  Migrados ${heredados.length} equipo(s) desde la categoria "${CATEGORIA_RETIRADA}".`);
 }
 
+// "Equipo contra incendio" salio del catalogo de Equipo de Seguridad porque
+// el modulo Extintores ya cubre ese material, con su propio ciclo de recarga
+// y prueba hidrostatica. Los registros que la usaran NO se reasignan a otra
+// categoria: se dan de alta en extintores, que es su lugar correcto, y se
+// eliminan de equipos.
+const contraIncendio = bd
+  .prepare("SELECT * FROM equipos WHERE categoria = 'Equipo contra incendio'")
+  .all();
+
+if (contraIncendio.length) {
+  const agentePorNombre = (nombre) => {
+    const t = String(nombre).toLowerCase();
+    if (t.includes('co2') || t.includes('bioxido') || t.includes('dioxido')) return 'CO2';
+    if (t.includes('agua')) return 'Agua a presion';
+    if (t.includes('espuma') || t.includes('afff')) return 'Espuma AFFF';
+    if (t.includes('halotron')) return 'Halotron';
+    if (t.includes('acetato')) return 'Acetato de potasio';
+    return 'PQS';
+  };
+  const estadoPorEquipo = { 'En servicio': 'Operativo', 'En almacen': 'Operativo', 'En mantenimiento': 'En mantenimiento', Baja: 'Baja' };
+
+  const insExt = bd.prepare(`INSERT INTO extintores
+    (codigo, tipo, capacidad_kg, marca, ubicacion, area, fecha_fabricacion, fecha_recarga,
+     fecha_prox_recarga, responsable_id, estado, observaciones)
+    VALUES (?, ?, 0, ?, ?, '', ?, ?, ?, ?, ?, ?)`);
+  const yaExiste = bd.prepare('SELECT 1 FROM extintores WHERE codigo = ?');
+  const borrarEquipo = bd.prepare('DELETE FROM equipos WHERE id = ?');
+  const borrarAvisos = bd.prepare("DELETE FROM notificaciones WHERE modulo = 'equipos' AND registro_id = ?");
+
+  let movidos = 0;
+  for (const e of contraIncendio) {
+    const codigo = yaExiste.get(e.codigo) ? `${e.codigo}-EQ${e.id}` : e.codigo;
+    insExt.run(
+      codigo,
+      agentePorNombre(e.nombre),
+      e.marca ?? '',
+      e.ubicacion ?? '',
+      e.fecha_adquisicion ?? null,
+      e.fecha_inicio ?? e.fecha_ultimo_mantenimiento ?? null,
+      e.fecha_vencimiento,
+      e.responsable_id ?? null,
+      estadoPorEquipo[e.estado] ?? 'Operativo',
+      `${e.nombre}. Migrado desde Equipo de Seguridad.${e.observaciones ? ` ${e.observaciones}` : ''}`.trim()
+    );
+    borrarAvisos.run(e.id);
+    borrarEquipo.run(e.id);
+    movidos++;
+  }
+
+  bitacora('sistema', 'Migracion', 'Extintores', `${movidos} registro(s) movidos de Equipo de Seguridad a Extintores`);
+  console.log(`  Migrados ${movidos} registro(s) de "Equipo contra incendio" al modulo Extintores.`);
+}
+
 /* ------------------------------------------------------------------ */
 /* Configuracion por defecto                                           */
 /* ------------------------------------------------------------------ */

@@ -89,6 +89,23 @@ export const RESPONSABLE_MODULO = {
   empleados: 'admin',
 };
 
+/**
+ * Categorias validas del modulo Equipo de Seguridad. Es la unica lista:
+ * la usan el catalogo que llena los desplegables y la validacion del
+ * servidor, para que no puedan divergir.
+ *
+ * "Equipo contra incendio" se retiro a proposito: ese material se registra
+ * en el modulo Extintores, que lleva su propio ciclo de recarga y prueba
+ * hidrostatica. Tenerlo en los dos lugares duplicaba el concepto.
+ */
+export const CATEGORIAS_EQUIPO = [
+  'Botiquin de primeros auxilios',
+  'Arnes de seguridad',
+  'Equipo de proteccion personal',
+  'Herramienta aislada',
+  'Instrumento de medicion',
+];
+
 /** Nombre visible de cada modulo, usado en el menu y en los correos. */
 export const NOMBRE_MODULO = {
   extintores: 'Extintores',
