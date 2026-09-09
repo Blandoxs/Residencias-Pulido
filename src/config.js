@@ -4,8 +4,20 @@
  * lo que permite mover el sistema a otro equipo sin tocar el codigo.
  */
 import path from 'node:path';
+import os from 'node:os';
 
 export const RAIZ = path.resolve(import.meta.dirname, '..');
+
+/** Direcciones IPv4 de este equipo dentro de la red local. */
+export function direccionesRed() {
+  const salida = [];
+  for (const [tarjeta, lista] of Object.entries(os.networkInterfaces())) {
+    for (const dato of lista ?? []) {
+      if (dato.family === 'IPv4' && !dato.internal) salida.push({ tarjeta, ip: dato.address });
+    }
+  }
+  return salida;
+}
 
 export const config = {
   puerto: Number(process.env.PORT ?? 3000),
@@ -19,6 +31,20 @@ export const config = {
 
   // Cada cuantas horas se ejecuta automaticamente el motor de vencimientos.
   horasRevisionAlertas: Number(process.env.SIGEV_HORAS_REVISION ?? 6),
+
+  /**
+   * Direccion con la que se abre el sistema desde otro equipo. Se usa en los
+   * enlaces de los correos de aviso. Al escuchar en toda la red (0.0.0.0) no
+   * sirve poner esa direccion en un enlace, asi que se toma la IP real.
+   */
+  get urlPublica() {
+    if (process.env.SIGEV_URL) return process.env.SIGEV_URL.replace(/\/+$/, '');
+    const anfitrion =
+      this.host === '0.0.0.0' || this.host === '::'
+        ? (direccionesRed()[0]?.ip ?? '127.0.0.1')
+        : this.host;
+    return `http://${anfitrion}:${this.puerto}`;
+  },
 
   // ===================================================================
   // TODO: Configurar aqui la API / credenciales del servicio de correo

@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
+    "red": "node --disable-warning=ExperimentalWarning scripts/servidor-red.js",
     "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
     "demo": "node scripts/servidor-estatico.js",
     "publicar": "node scripts/publicar-demostracion.js",

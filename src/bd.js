@@ -296,7 +296,7 @@ const CONFIG_DEFECTO = {
   area_responsable: 'Seguridad e Higiene',
   // Direccion desde la que se abre el sistema. Se usa para armar el enlace
   // directo a la ficha del elemento dentro de los correos de aviso.
-  url_sistema: process.env.SIGEV_URL ?? `http://${config.host}:${config.puerto}`,
+  url_sistema: config.urlPublica,
   // Umbrales (en dias) en los que se envia correo, ademas de los criticos
   // configurados para cada tipo de elemento.
   umbrales_correo: '30,15,7',

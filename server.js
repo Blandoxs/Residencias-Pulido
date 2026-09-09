@@ -3,17 +3,19 @@
  * Servidor HTTP sin dependencias externas: usa unicamente los modulos
  * integrados de Node.js (http, sqlite, crypto, fs).
  *
- * Arranque:  npm start     ->  http://127.0.0.1:3000
+ * Arranque:
+ *   npm start   ->  solo este equipo      http://localhost:3000
+ *   npm run red ->  toda la red local     http://<IP-del-equipo>:3000
  */
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { config, RAIZ } from './src/config.js';
+import { config, RAIZ, direccionesRed } from './src/config.js';
 import { api } from './src/api.js';
 import { usuarioDeToken, leerCookie, exigirPermiso } from './src/auth.js';
 import { programarRevision } from './src/alertas.js';
 import { ErrorApp } from './src/util.js';
-import './src/bd.js';
+import { leerConfiguracion, guardarConfiguracion } from './src/bd.js';
 
 const PUBLICO = path.join(RAIZ, 'public');
 const LIMITE_CUERPO = 8 * 1024 * 1024; // 8 MB (permite fotografias en base64)
@@ -149,12 +151,41 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 servidor.listen(config.puerto, config.host, () => {
+  const enRed = config.host === '0.0.0.0' || config.host === '::';
+
   console.log('');
   console.log('  ============================================================');
   console.log('   SIGEV  |  Sistema de Gestion de Equipo y Vigencias  |  CFE');
   console.log('  ============================================================');
-  console.log(`   Servidor:      http://${config.host}:${config.puerto}`);
-  console.log(`   Base de datos: ${config.rutaBD}`);
+  console.log(`   En este equipo:  http://localhost:${config.puerto}`);
+
+  if (enRed) {
+    const tarjetas = direccionesRed();
+    if (tarjetas.length) {
+      console.log('   Desde otros dispositivos de la misma red:');
+      for (const t of tarjetas) {
+        console.log(`     http://${t.ip}:${config.puerto}   (${t.tarjeta})`);
+      }
+    } else {
+      console.log('   Este equipo no tiene conexion de red activa.');
+    }
+  } else {
+    console.log('   Solo accesible desde este equipo. Para abrirlo a la red: npm run red');
+  }
+
+  console.log(`   Base de datos:   ${config.rutaBD}`);
   console.log('  ------------------------------------------------------------');
+
+  // Los correos de aviso llevan un enlace a la ficha del elemento. Si apunta
+  // a localhost no le sirve a nadie mas, asi que al abrir el sistema a la red
+  // se actualiza solo (se respeta cualquier direccion puesta a mano).
+  if (enRed) {
+    const actual = leerConfiguracion().url_sistema ?? '';
+    if (/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(actual)) {
+      guardarConfiguracion('url_sistema', config.urlPublica);
+      console.log(`   Enlace de los correos actualizado a ${config.urlPublica}`);
+    }
+  }
+
   programarRevision();
 });

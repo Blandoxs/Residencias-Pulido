@@ -1,0 +1,343 @@
+====================================================================
+ SIGEV - Instalacion y puesta en marcha
+ Sistema de Gestion de Equipo y Vigencias
+ Comision Federal de Electricidad - Zona Parral, Chihuahua
+====================================================================
+
+Esta guia sirve para dejar el sistema funcionando en un equipo y que el
+resto de las computadoras y telefonos de la misma red lo puedan usar.
+
+Todos los comandos se escriben en la consola de Windows (PowerShell o
+Simbolo del sistema). Al final, en el ANEXO, estan todos juntos para
+copiar y pegar.
+
+
+--------------------------------------------------------------------
+ QUE SE NECESITA
+--------------------------------------------------------------------
+
+  - Windows 10 o superior
+  - Node.js version 22.5 o mas nueva
+  - La carpeta del proyecto SIGEV
+  - Que el equipo este conectado a la misma red (Wi-Fi o cable) que
+    los dispositivos que lo van a usar
+
+NO se necesita instalar base de datos, servidor web, XAMPP, Apache ni
+ningun paquete de npm. El sistema usa lo que ya trae Node.js.
+
+
+--------------------------------------------------------------------
+ PASO 1 - INSTALAR NODE.JS
+--------------------------------------------------------------------
+
+Primero revise si ya lo tiene. Abra la consola y escriba:
+
+    node -v
+
+Si responde algo como  v24.12.0  (el numero debe ser 22 o mayor), ya
+esta instalado y puede saltar al PASO 2.
+
+Si dice que no reconoce el comando, instalelo de alguna de estas dos
+formas:
+
+  OPCION A - Desde la consola (mas rapido):
+
+    winget install OpenJS.NodeJS.LTS
+
+  OPCION B - Descargandolo:
+
+    1. Entre a   https://nodejs.org
+    2. Descargue la version LTS para Windows
+    3. Ejecute el instalador y acepte todas las opciones por omision
+
+IMPORTANTE: al terminar la instalacion, CIERRE la consola y abra una
+nueva. Si no, el comando node sigue sin reconocerse.
+
+Compruebe que quedo bien:
+
+    node -v
+    npm -v
+
+
+--------------------------------------------------------------------
+ PASO 2 - COLOCAR LA CARPETA DEL PROYECTO
+--------------------------------------------------------------------
+
+Copie la carpeta completa del proyecto al equipo. Por ejemplo:
+
+    C:\SIGEV
+
+Tambien se puede descargar del repositorio:
+
+    git clone https://github.com/Blandoxs/Residencias-Pulido.git C:\SIGEV
+
+Despues situese en esa carpeta. Este comando se usa cada vez que se va
+a encender el sistema:
+
+    cd C:\SIGEV
+
+(Si la carpeta esta en otra ruta, cambie C:\SIGEV por la suya. Si la
+ruta lleva espacios, va entre comillas:  cd "C:\Users\danyh\Recidencias Pulido" )
+
+
+--------------------------------------------------------------------
+ PASO 3 - PRIMER ARRANQUE Y CONTRASENA
+--------------------------------------------------------------------
+
+Solo la primera vez, arranquelo asi:
+
+    npm start
+
+En la consola aparecera la contrasena del administrador. SE MUESTRA UNA
+SOLA VEZ:
+
+    ***********************************************************
+     ACCESO INICIAL (se muestra una sola vez)
+       Usuario:    admin
+       Contrasena: xxxxxxxxxxxxxx
+    ***********************************************************
+
+Tambien queda guardada en el archivo:
+
+    datos\acceso-inicial.txt
+
+Abra el sistema en este equipo:
+
+    http://localhost:3000
+
+Entre con el usuario admin y esa contrasena. Lo PRIMERO que debe hacer
+es cambiarla: menu de su nombre (arriba a la derecha) -> Cambiar
+contrasena. Despues borre el archivo datos\acceso-inicial.txt.
+
+Para detener el servidor: presione   Ctrl + C   en la consola.
+
+
+--------------------------------------------------------------------
+ PASO 4 - ENCENDERLO PARA TODA LA RED
+--------------------------------------------------------------------
+
+Este es el comando que se usa de aqui en adelante:
+
+    npm run red
+
+La diferencia con  npm start  es que este escucha en toda la red, no
+solo en el equipo. Al arrancar muestra la direccion exacta:
+
+    ============================================================
+     SIGEV  |  Sistema de Gestion de Equipo y Vigencias  |  CFE
+    ============================================================
+     En este equipo:  http://localhost:3000
+     Desde otros dispositivos de la misma red:
+       http://192.168.0.5:3000   (Wi-Fi)
+     Base de datos:   C:\SIGEV\datos\sigev.db
+    ------------------------------------------------------------
+
+Anote esa direccion (http://192.168.0.5:3000): es la que se escribe en
+los demas dispositivos.
+
+La consola debe quedarse abierta mientras el sistema este en uso. Se
+puede minimizar, pero si se cierra, el sistema se apaga.
+
+Tambien se puede encender con doble clic en el archivo:
+
+    INICIAR-SIGEV.bat
+
+
+--------------------------------------------------------------------
+ PASO 5 - PERMITIR EL PUERTO EN EL FIREWALL (UNA SOLA VEZ)
+--------------------------------------------------------------------
+
+Windows bloquea por omision las conexiones que llegan de otros equipos.
+Sin este paso, el sistema abre en esta computadora pero NO en las demas.
+
+Abra la consola COMO ADMINISTRADOR:
+
+    Menu Inicio -> escriba: powershell
+    -> clic derecho en Windows PowerShell -> "Ejecutar como administrador"
+
+Y pegue este comando (es una sola linea):
+
+    netsh advfirewall firewall add rule name="SIGEV (puerto 3000)" dir=in action=allow protocol=TCP localport=3000 profile=any
+
+Debe responder:  Aceptar.
+
+Ademas, si la red de este equipo esta marcada como "Publica", Windows
+restringe aun mas. Conviene marcarla como privada (misma consola de
+administrador, cambie Wi-Fi por Ethernet si usa cable):
+
+    Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
+
+Para revisar como quedo:
+
+    Get-NetConnectionProfile
+
+Para quitar el permiso mas adelante (si se deja de usar):
+
+    netsh advfirewall firewall delete rule name="SIGEV (puerto 3000)"
+
+
+--------------------------------------------------------------------
+ PASO 6 - ENTRAR DESDE LOS DEMAS DISPOSITIVOS
+--------------------------------------------------------------------
+
+En el telefono o en otra computadora, conectados a la MISMA red:
+
+  1. Abra el navegador (Chrome, Edge, Safari)
+  2. Escriba la direccion que mostro la consola, por ejemplo:
+
+        http://192.168.0.5:3000
+
+  3. Entre con su usuario y contrasena
+
+Nota: escriba http:// al inicio. Si solo pone la IP, algunos telefonos
+la toman como busqueda en Google.
+
+Cada persona entra con su propia cuenta. Las cuentas se dan de alta
+desde el sistema: seccion 04 Administracion -> Usuarios, eligiendo su
+perfil (Administrador, Jefe de Seguridad o Encargado de Documentacion).
+
+
+--------------------------------------------------------------------
+ USO DIARIO
+--------------------------------------------------------------------
+
+  Encender:
+
+    cd C:\SIGEV
+    npm run red
+
+  Apagar:
+
+    Ctrl + C   en la consola
+
+  Ver la direccion otra vez: aparece cada vez que arranca. O bien:
+
+    ipconfig
+
+  y busque "Direccion IPv4" de su adaptador de red.
+
+
+--------------------------------------------------------------------
+ QUE LA DIRECCION NO CAMBIE (RECOMENDADO)
+--------------------------------------------------------------------
+
+La IP del equipo (192.168.0.5) puede cambiar al reiniciar el modem,
+y entonces los demas dispositivos ya no lo encontrarian en la misma
+direccion. Para evitarlo hay dos caminos:
+
+  1. Pedirle al area de redes que reserve una IP fija para este equipo
+     (es lo correcto en la instalacion de CFE), o
+
+  2. Configurar IP fija en Windows:
+     Configuracion -> Red e Internet -> Wi-Fi (o Ethernet) ->
+     Propiedades -> Configuracion IP -> Editar -> Manual
+
+Si la IP cambia, no se pierde nada: solo hay que volver a leer la
+direccion que muestra la consola al arrancar y usar la nueva.
+
+
+--------------------------------------------------------------------
+ RESPALDO DE LA INFORMACION
+--------------------------------------------------------------------
+
+Toda la informacion vive en un solo archivo:
+
+    datos\sigev.db
+
+Para respaldar: DETENGA el servidor (Ctrl + C) y copie la carpeta
+datos\ completa a una USB o carpeta de red. Para restaurar, reemplace
+esa carpeta y vuelva a encender.
+
+Se recomienda respaldar una vez por semana.
+
+
+--------------------------------------------------------------------
+ CORREO DE AVISOS (OPCIONAL)
+--------------------------------------------------------------------
+
+El sistema avisa dentro de la aplicacion sin ninguna configuracion
+extra. Si ademas se quiere que mande correos, hace falta un servidor
+SMTP institucional:
+
+    npm install nodemailer
+
+Y antes de arrancar, en la misma consola:
+
+    set SMTP_HOST=smtp.cfe.mx
+    set SMTP_PORT=587
+    set SMTP_USER=alertas.parral@cfe.mx
+    set SMTP_PASS=la_contrasena
+    npm run red
+
+Despues, dentro del sistema: Configuracion -> activar "Envio de alertas
+por correo" y capturar el correo del administrador.
+
+Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
+
+
+--------------------------------------------------------------------
+ PROBLEMAS COMUNES
+--------------------------------------------------------------------
+
+ "node no se reconoce como comando"
+     No se instalo Node.js, o no se cerro y volvio a abrir la consola
+     despues de instalarlo. Vea el PASO 1.
+
+ "Error: listen EADDRINUSE ... 3000"
+     El puerto ya esta ocupado, casi siempre porque el sistema ya estaba
+     encendido en otra ventana. Cierre esa ventana, o use otro puerto:
+
+         set PORT=3001
+         npm run red
+
+ Abre en esta computadora pero no en el telefono
+     1. Falta la regla del firewall (PASO 5)
+     2. El telefono esta en otra red (datos moviles, o una Wi-Fi de
+        invitados que aisla los dispositivos)
+     3. Se escribio la direccion sin http:// al inicio
+
+ Olvide la contrasena del administrador
+     Si hay otro usuario con perfil Administrador, entre con el y
+     cambiela desde Usuarios. Si no hay ninguno, se pierde el acceso:
+     por eso conviene tener dos cuentas de administrador.
+
+ La pagina se ve pero dice "Modo demostracion"
+     Eso es la version de exhibicion publicada en internet, no el
+     sistema real. El sistema real es el que arranca con npm run red y
+     guarda en datos\sigev.db.
+
+
+--------------------------------------------------------------------
+ ANEXO - TODOS LOS COMANDOS JUNTOS
+--------------------------------------------------------------------
+
+  # 1. Comprobar Node.js (debe ser v22 o mayor)
+  node -v
+
+  # 2. Si no esta instalado
+  winget install OpenJS.NodeJS.LTS
+  #    ...cerrar la consola y abrir una nueva...
+
+  # 3. Ir a la carpeta del proyecto
+  cd C:\SIGEV
+
+  # 4. Primer arranque (anotar la contrasena que aparece)
+  npm start
+
+  # 5. En una consola COMO ADMINISTRADOR, una sola vez:
+  netsh advfirewall firewall add rule name="SIGEV (puerto 3000)" dir=in action=allow protocol=TCP localport=3000 profile=any
+  Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
+
+  # 6. De aqui en adelante, para encenderlo:
+  cd C:\SIGEV
+  npm run red
+
+  # 7. Direccion para los demas dispositivos: la que muestra la consola
+  #    Ejemplo:  http://192.168.0.5:3000
+
+====================================================================
+ Instalacion actual de referencia
+   Carpeta:    C:\Users\danyh\Recidencias Pulido
+   Direccion:  http://192.168.0.5:3000
+   Puerto:     3000
+====================================================================

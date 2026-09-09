@@ -31,7 +31,36 @@ el sistema usa únicamente módulos integrados de Node (servidor HTTP, base de d
 npm start
 ```
 
-Después abra el navegador en **http://127.0.0.1:3000**
+Después abra el navegador en **http://localhost:3000**
+
+### Ponerlo en la red local
+
+Para que el resto de las computadoras y teléfonos de la misma red lo usen:
+
+```bash
+npm run red
+```
+
+Es el mismo sistema y la misma base de datos; lo único que cambia es la dirección de escucha
+(`0.0.0.0` en lugar de `127.0.0.1`). Al arrancar imprime la dirección exacta que hay que
+escribir en los demás dispositivos:
+
+```text
+ En este equipo:  http://localhost:3000
+ Desde otros dispositivos de la misma red:
+   http://192.168.0.5:3000   (Wi-Fi)
+```
+
+Windows bloquea las conexiones entrantes, así que **una sola vez** hay que permitir el puerto
+desde una consola **como administrador**:
+
+```bash
+netsh advfirewall firewall add rule name="SIGEV (puerto 3000)" dir=in action=allow protocol=TCP localport=3000 profile=any
+```
+
+En Windows también se puede encender con doble clic en `INICIAR-SIGEV.bat`. La guía completa
+—instalar Node, primer arranque, firewall, respaldo y problemas comunes— está en
+[`INSTALACION.txt`](INSTALACION.txt), escrita para seguirse desde la consola.
 
 Para desarrollo con recarga automática:
 
@@ -250,10 +279,13 @@ Recidencias Pulido/
 │       ├── nucleo.js      Cliente de la API y componentes reutilizables
 │       ├── vistas.js      Pantallas de cada módulo
 │       └── servidor-demo.js  Servidor simulado (solo para la demostración en línea)
+├── INSTALACION.txt              Guía de instalación y puesta en marcha (consola)
+├── INICIAR-SIGEV.bat            Enciende el servidor en red con doble clic
 ├── recursos/
 │   └── logo-oficial-cfe.jpeg    Logotipo oficial del que se derivan los PNG
 ├── scripts/
 │   ├── generar-logos.ps1        Genera las versiones transparentes del logotipo
+│   ├── servidor-red.js          Arranque escuchando en toda la red local
 │   ├── reiniciar-bd.js
 │   ├── servidor-estatico.js     Prueba local del modo demostración
 │   └── publicar-demostracion.js Publica public/ en la rama gh-pages
@@ -410,7 +442,7 @@ Todas las rutas responden JSON y requieren sesión (cookie `sigev_sesion`, HttpO
 | Variable | Valor por omisión | Uso |
 |---|---|---|
 | `PORT` | `3000` | Puerto del servidor |
-| `HOST` | `127.0.0.1` | Use `0.0.0.0` para publicarlo en la red local |
+| `HOST` | `127.0.0.1` | `0.0.0.0` lo abre a la red local (lo hace `npm run red`) |
 | `SIGEV_BD` | `datos/sigev.db` | Ubicación de la base de datos |
 | `SIGEV_HORAS_SESION` | `8` | Duración de la sesión |
 | `SIGEV_HORAS_REVISION` | `6` | Frecuencia de la revisión automática |
