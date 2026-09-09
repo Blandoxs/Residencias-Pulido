@@ -401,5 +401,7 @@ export function leerFormulario(contenedor) {
 
 /** Celda de clave (folio, codigo, RPE) con subtitulo opcional. */
 export function celdaClave(valor, subtitulo) {
-  return `<span class="clave-fila">${esc(valor)}</span>${subtitulo ? `<span class="sub">${esc(subtitulo)}</span>` : ''}`;
+  return `<span class="clave-fila">${esc(valor)}</span>${
+    subtitulo ? `<span class="sub" title="${esc(subtitulo)}">${esc(subtitulo)}</span>` : ''
+  }`;
 }
