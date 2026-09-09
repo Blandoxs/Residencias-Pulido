@@ -14,7 +14,8 @@
     "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
     "demo": "node scripts/servidor-estatico.js",
     "publicar": "node scripts/publicar-demostracion.js",
-    "reiniciar-bd": "node --disable-warning=ExperimentalWarning scripts/reiniciar-bd.js"
+    "reiniciar-bd": "node --disable-warning=ExperimentalWarning scripts/reiniciar-bd.js",
+    "clave": "node --disable-warning=ExperimentalWarning scripts/restablecer-clave.js"
   },
   "keywords": [
     "cfe",

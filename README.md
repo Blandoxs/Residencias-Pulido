@@ -105,6 +105,15 @@ set SIGEV_ADMIN_PASS=SuContrasenaSegura
 npm start
 ```
 
+Si esa contraseña se pierde, se restablece desde la consola **del propio equipo**:
+
+```bash
+npm run clave -- admin MiContrasenaNueva
+```
+
+Ejecutado sin datos (`npm run clave`) lista las cuentas registradas. Requiere acceso al archivo
+de la base de datos, así que no puede usarse desde la red.
+
 Las demás cuentas se crean desde el módulo **Usuarios** eligiendo su perfil.
 
 ### Perfiles y reparto de módulos
@@ -286,6 +295,7 @@ Recidencias Pulido/
 ├── scripts/
 │   ├── generar-logos.ps1        Genera las versiones transparentes del logotipo
 │   ├── servidor-red.js          Arranque escuchando en toda la red local
+│   ├── restablecer-clave.js     Restablece la contraseña de un usuario
 │   ├── reiniciar-bd.js
 │   ├── servidor-estatico.js     Prueba local del modo demostración
 │   └── publicar-demostracion.js Publica public/ en la rama gh-pages

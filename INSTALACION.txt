@@ -111,6 +111,11 @@ contrasena. Despues borre el archivo datos\acceso-inicial.txt.
 
 Para detener el servidor: presione   Ctrl + C   en la consola.
 
+Si en algun momento se pierde esa contrasena, se restablece desde la
+consola del equipo con:
+
+    npm run clave -- admin MiContrasenaNueva
+
 
 --------------------------------------------------------------------
  PASO 4 - ENCENDERLO PARA TODA LA RED
@@ -297,9 +302,18 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
      3. Se escribio la direccion sin http:// al inicio
 
  Olvide la contrasena del administrador
-     Si hay otro usuario con perfil Administrador, entre con el y
-     cambiela desde Usuarios. Si no hay ninguno, se pierde el acceso:
-     por eso conviene tener dos cuentas de administrador.
+     Se restablece desde la consola del propio equipo, en la carpeta del
+     proyecto:
+
+         npm run clave -- admin MiContrasenaNueva
+
+     Para ver que cuentas existen, ejecutelo sin datos:
+
+         npm run clave
+
+     Solo funciona con acceso fisico al equipo y al archivo de la base de
+     datos; no se puede hacer desde la red. Aun asi, conviene tener dos
+     cuentas con perfil Administrador.
 
  La pagina se ve pero dice "Modo demostracion"
      Eso es la version de exhibicion publicada en internet, no el
@@ -334,6 +348,9 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
 
   # 7. Direccion para los demas dispositivos: la que muestra la consola
   #    Ejemplo:  http://192.168.0.5:3000
+
+  # Si se pierde la contrasena del administrador:
+  npm run clave -- admin MiContrasenaNueva
 
 ====================================================================
  Instalacion actual de referencia
