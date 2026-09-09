@@ -509,7 +509,7 @@ function credencialHTML(g, cfg) {
   const v = clasificar(g.fecha_vencimiento, 'gafete');
   return `<div class="credencial">
     <div class="credencial__cabeza">
-      <img src="img/cfe-blanco.svg" alt="CFE" />
+      <img src="img/cfe-marca-blanco.png" alt="CFE" />
       <span>${esc(cfg.nombre_centro ?? '')}<br />${esc(cfg.zona ?? '')}</span>
     </div>
     <div class="credencial__banda"></div>

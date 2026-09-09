@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    SIGEV · Hoja de estilos
    Lenguaje visual: tablero de operacion industrial.
    Retícula estricta, líneas de 1 px, sin sombras ni esquinas redondeadas,
@@ -90,7 +90,7 @@ html, body {
   opacity: .5;
 }
 
-.acceso__marca { width: 210px; margin-bottom: auto; }
+.acceso__marca { width: 232px; height: auto; margin-bottom: auto; }
 
 .acceso__titular h1 {
   font-family: var(--cond);
@@ -166,7 +166,7 @@ html, body {
 @media (max-width: 900px) {
   .acceso { grid-template-columns: 1fr; }
   .acceso__lienzo { padding: 30px 22px; border-right: 0; border-bottom: 3px solid var(--verde); }
-  .acceso__marca { width: 168px; margin-bottom: 22px; }
+  .acceso__marca { width: 176px; margin-bottom: 22px; }
   .acceso__indice { display: none; }
   .acceso__forma { padding: 30px 22px 60px; }
 }
@@ -195,7 +195,7 @@ html, body {
 .barra__boton:hover { background: var(--verde); border-color: var(--verde); }
 .barra__boton:disabled { opacity: .4; cursor: wait; }
 
-.barra__logo { height: 30px; width: auto; }
+.barra__logo { height: 27px; width: auto; }
 
 .barra__titulo { border-left: 1px solid rgba(255, 255, 255, .2); padding-left: 16px; }
 .barra__titulo strong {
@@ -715,7 +715,7 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .84rem; }
 .credencial__cabeza {
   background: var(--tinta); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;
 }
-.credencial__cabeza img { height: 26px; }
+.credencial__cabeza img { height: 21px; width: auto; }
 .credencial__cabeza span {
   font-family: var(--mono); font-size: .56rem; letter-spacing: .14em;
   text-transform: uppercase; color: var(--gris-cl); text-align: right; max-width: 120px;
