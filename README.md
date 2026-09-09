@@ -315,6 +315,17 @@ hay espacio, se muestra el logotipo completo con la razón social integrada, por
 repite el nombre por separado**; junto al logotipo solo aparece «SIGEV», que es el nombre del
 sistema, no de la institución.
 
+Todas las vistas arman sus tablas con el mismo componente (`tabla()` en `public/js/nucleo.js`)
+y su tamaño se define en un solo lugar: los tokens `--tabla-dato`, `--tabla-sub`,
+`--tabla-encabezado`, `--tabla-celda` y `--tabla-fila` de `public/css/estilos.css`. Cambiar ahí
+el cuerpo de letra, el relleno o el alto de fila ajusta por igual Extintores, Equipo de Seguridad,
+Gafetes, Licencias, Personal, Vigencias, Usuarios y Bitácora, sin tocar cada vista.
+
+La segunda línea de cada celda (RPE, ubicación, modelo, responsable) usa la clase `.sub`: más
+chica que el dato principal para conservar la jerarquía, pero con contraste 7.7:1 sobre blanco
+para leerse sin esfuerzo, y siempre en un solo renglón para que ninguna tabla quede más alta
+que las demás.
+
 El original institucional vive en `recursos/logo-oficial-cfe.jpeg`. Las tres versiones se
 regeneran desde ahí —recorta el fondo, separa la marca de la razón social y escala— con:
 
