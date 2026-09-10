@@ -25,5 +25,8 @@
     "inventario",
     "residencias"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "nodemailer": "^10.0.2"
+  }
 }

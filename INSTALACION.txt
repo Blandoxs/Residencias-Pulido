@@ -45,8 +45,10 @@ pegar de corrido.
   - Que el equipo este conectado a la misma red (Wi-Fi o cable) que
     los dispositivos que lo van a usar
 
-NO se necesita instalar base de datos, servidor web, XAMPP, Apache ni
-ningun paquete de npm. El sistema usa lo que ya trae Node.js.
+NO se necesita instalar base de datos, servidor web, XAMPP ni Apache: el
+sistema usa lo que ya trae Node.js. La unica libreria externa es
+nodemailer, para los correos de aviso, y se instala con un solo comando
+en el PASO 3.
 
 
 --------------------------------------------------------------------
@@ -131,6 +133,15 @@ Compruebe que se descargo bien: debe listar server.js, package.json,
 las carpetas src y public, y este mismo archivo.
 
     dir
+
+Instale la unica dependencia del proyecto (nodemailer, la libreria que
+manda los correos de aviso):
+
+    npm install
+
+El sistema funciona igual sin este paso: lo unico que no podria hacer es
+enviar correos. Todo lo demas (base de datos, alertas dentro del sistema,
+pantallas) usa lo que ya trae Node.js.
 
 Para traer actualizaciones mas adelante, estando dentro de C:\SIGEV:
 
@@ -331,23 +342,49 @@ Se recomienda respaldar una vez por semana.
 --------------------------------------------------------------------
 
 El sistema avisa dentro de la aplicacion sin ninguna configuracion
-extra. Si ademas se quiere que mande correos, hace falta un servidor
-SMTP institucional:
+extra. Para que ademas mande correos hacen falta tres cosas:
 
-    npm install nodemailer
+  1. La libreria, que ya viene declarada en el proyecto. Si ejecuto
+     npm install en el PASO 3, ya esta. Si no:
 
-Y antes de arrancar, en la misma consola:
+         npm install
 
-    set SMTP_HOST=smtp.cfe.mx
-    set SMTP_PORT=587
-    set SMTP_USER=alertas.parral@cfe.mx
-    set SMTP_PASS=la_contrasena
-    npm run red
+  2. Los datos del servidor SMTP institucional, en la MISMA consola
+     desde la que se va a arrancar el sistema:
 
-Despues, dentro del sistema: Configuracion -> activar "Envio de alertas
-por correo" y capturar el correo del administrador.
+         set SMTP_HOST=smtp.cfe.mx
+         set SMTP_PORT=587
+         set SMTP_USER=alertas.parral@cfe.mx
+         set SMTP_PASS=la_contrasena_real
+         set SMTP_FROM=SIGEV CFE <alertas.parral@cfe.mx>
+         set SMTP_SEGURO=false
+         npm run red
 
-Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
+     (SMTP_SEGURO=true solo si el servidor usa el puerto 465.)
+
+     Estos datos los proporciona el area de TICS. Las contrasenas NUNCA
+     se escriben dentro de los archivos del proyecto ni se suben al
+     repositorio: viven solo en la consola del servidor.
+
+  3. Activarlo dentro del sistema: entrar como Administrador ->
+     Configuracion -> el campo "Envio de alertas por correo" pasa de
+     "Desactivado (solo en el sistema)" a "Activado (requiere SMTP)".
+     En esa misma pantalla se captura el correo del administrador, que
+     recibe copia de todas las alertas.
+
+COMO COMPROBAR QUE FUNCIONA:
+
+  a. Que los trabajadores y los usuarios tengan correo capturado
+     (Personal y Usuarios).
+  b. Bajar temporalmente el aviso de un tipo de elemento en
+     Configuracion -> Anticipacion por tipo, para provocar una alerta.
+  c. Presionar "Revisar" en el Panel. Abajo aparece cuantos correos se
+     enviaron.
+  d. Revisar la bandeja del trabajador, la del encargado del modulo y la
+     del administrador: a los tres les debe llegar.
+
+Si algo falla, el sistema NO se detiene: anota el motivo (por ejemplo
+"SMTP no configurado") y conserva la alerta dentro del sistema.
 
 
 --------------------------------------------------------------------
@@ -410,10 +447,11 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
   # 4. Si no esta, instalarlo y ABRIR UNA CONSOLA NUEVA
   winget install Git.Git
 
-  # 5. Descargar el proyecto
+  # 5. Descargar el proyecto e instalar la dependencia de correo
   cd C:\
   git clone https://github.com/Blandoxs/Residencias-Pulido.git SIGEV
   cd C:\SIGEV
+  npm install
 
   # 6. Primer arranque (anotar la contrasena que aparece)
   npm start

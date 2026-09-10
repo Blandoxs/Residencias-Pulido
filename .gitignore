@@ -8,7 +8,9 @@ acceso-inicial.txt
 
 # Dependencias opcionales (nodemailer)
 node_modules/
-package-lock.json
+
+# package-lock.json SI se versiona: fija la version exacta de nodemailer,
+# que es la unica dependencia del proyecto.
 
 # Herramientas y sistema operativo
 .claude/

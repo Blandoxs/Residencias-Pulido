@@ -252,7 +252,11 @@ function semaforo(r) {
 function matrizTipos(porTipo) {
   return `<div class="matriz">
     <div class="matriz__fila matriz__fila--cabeza">
-      <span>Tipo de elemento</span><span>Aviso</span><span>R</span><span>A</span><span>V</span>
+      <span>Tipo de elemento</span>
+      <span title="Dias de aviso previo / dias del umbral critico">Aviso</span>
+      <span title="Rojo: vencidos, fuera de vigencia">R</span>
+      <span title="Amarillo: proximos a vencer, dentro del aviso previo">A</span>
+      <span title="Verde: vigentes, dentro de su periodo de validez">V</span>
     </div>
     ${porTipo
       .map(
@@ -265,7 +269,12 @@ function matrizTipos(porTipo) {
         </div>`
       )
       .join('')}
-  </div>`;
+  </div>
+  <p class="matriz__leyenda">
+    <span class="matriz__clave matriz__clave--rojo">R</span> Vencido
+    <span class="matriz__clave matriz__clave--amarillo">A</span> Por vencer
+    <span class="matriz__clave matriz__clave--verde">V</span> Vigente
+  </p>`;
 }
 
 export async function panel(cont) {
@@ -304,7 +313,8 @@ export async function panel(cont) {
       </div>
 
       <div class="hoja hoja--acento">
-        <h3 class="titulo-bloque">Reparto por tipo de elemento <small>R / A / V</small></h3>
+        <h3 class="titulo-bloque">Reparto por tipo de elemento
+          <small title="Rojo: vencido / Amarillo: por vencer / Verde: vigente">R / A / V</small></h3>
         ${matrizTipos(d.porTipo)}
       </div>
     </div>

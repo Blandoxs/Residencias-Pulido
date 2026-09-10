@@ -24,8 +24,15 @@ Cada tipo tiene **su propia anticipación de aviso**, configurable desde el sist
 
 ## 1. Requisitos y arranque
 
-Solo se necesita **Node.js 22.5 o superior** (probado en Node 24). **No requiere `npm install`**:
-el sistema usa únicamente módulos integrados de Node (servidor HTTP, base de datos SQLite y criptografía).
+Solo se necesita **Node.js 22.5 o superior** (probado en Node 24). El sistema usa módulos
+integrados de Node (servidor HTTP, base de datos SQLite y criptografía); la única dependencia
+externa es **nodemailer**, para los correos de aviso:
+
+```bash
+npm install
+```
+
+Sin ese paso el sistema arranca igual: lo único que no podría hacer es enviar correos.
 
 ```bash
 npm start
