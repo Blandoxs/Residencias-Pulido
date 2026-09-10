@@ -497,6 +497,19 @@ html, body {
 }
 .matriz__nombre { font-size: .84rem; font-weight: 600; }
 .matriz__umbral { font-family: var(--mono); font-size: var(--etiqueta); color: var(--gris-medio); }
+
+/* Que significan las columnas R, A y V del reparto por tipo */
+.matriz__leyenda {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px;
+  margin: 12px 0 0; font-size: var(--nota); color: var(--gris-medio);
+}
+.matriz__clave {
+  display: inline-grid; place-items: center; width: 17px; height: 17px;
+  font-family: var(--mono); font-size: .66rem; font-weight: 700; color: #fff;
+}
+.matriz__clave--rojo { background: var(--rojo); }
+.matriz__clave--amarillo { background: #b57f00; }
+.matriz__clave--verde { background: var(--verde); }
 .matriz__celda {
   font-family: var(--mono); font-size: .78rem; font-weight: 700; text-align: center;
   padding: 4px 0; border: 1px solid var(--linea); color: var(--gris-cl);
