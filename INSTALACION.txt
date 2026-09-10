@@ -4,12 +4,35 @@
  Comision Federal de Electricidad - Zona Parral, Chihuahua
 ====================================================================
 
-Esta guia sirve para dejar el sistema funcionando en un equipo y que el
-resto de las computadoras y telefonos de la misma red lo puedan usar.
+Esta guia lleva paso a paso desde una computadora sin nada instalado
+hasta el sistema funcionando y visible para los demas dispositivos de
+la red.
 
-Todos los comandos se escriben en la consola de Windows (PowerShell o
-Simbolo del sistema). Al final, en el ANEXO, estan todos juntos para
-copiar y pegar.
+Todos los comandos se escriben en la consola de Windows (CMD o
+PowerShell). En el ANEXO, al final, estan todos juntos para copiar y
+pegar de corrido.
+
+
+--------------------------------------------------------------------
+ DOS VERSIONES: CUAL ES CUAL
+--------------------------------------------------------------------
+
+  1. DEMOSTRACION (solo para verla, no guarda nada de verdad)
+
+     https://blandoxs.github.io/Residencias-Pulido/
+
+     Se abre en cualquier navegador con internet, sin instalar nada.
+     Los datos son de ejemplo y viven en el navegador de quien la abre.
+     Sirve para mostrar el sistema; no para trabajar con el.
+     Se entra con: admin / admin
+
+  2. SISTEMA REAL (el que se instala y guarda la informacion)
+
+     Es el de esta guia. Corre en una computadora de la oficina, guarda
+     todo en su propia base de datos y los demas equipos lo abren por
+     la red. Codigo:
+
+     https://github.com/Blandoxs/Residencias-Pulido
 
 
 --------------------------------------------------------------------
@@ -17,8 +40,8 @@ copiar y pegar.
 --------------------------------------------------------------------
 
   - Windows 10 o superior
-  - Node.js version 22.5 o mas nueva
-  - La carpeta del proyecto SIGEV
+  - Node.js 22.5 o mas nuevo   (PASO 1)
+  - Git                        (PASO 2)
   - Que el equipo este conectado a la misma red (Wi-Fi o cable) que
     los dispositivos que lo van a usar
 
@@ -30,15 +53,14 @@ ningun paquete de npm. El sistema usa lo que ya trae Node.js.
  PASO 1 - INSTALAR NODE.JS
 --------------------------------------------------------------------
 
-Primero revise si ya lo tiene. Abra la consola y escriba:
+Revise primero si ya lo tiene. Abra la consola y escriba:
 
     node -v
 
 Si responde algo como  v24.12.0  (el numero debe ser 22 o mayor), ya
-esta instalado y puede saltar al PASO 2.
+esta instalado y puede pasar al PASO 2.
 
-Si dice que no reconoce el comando, instalelo de alguna de estas dos
-formas:
+Si dice que no reconoce el comando, instalelo:
 
   OPCION A - Desde la consola (mas rapido):
 
@@ -50,38 +72,76 @@ formas:
     2. Descargue la version LTS para Windows
     3. Ejecute el instalador y acepte todas las opciones por omision
 
-IMPORTANTE: al terminar la instalacion, CIERRE la consola y abra una
-nueva. Si no, el comando node sigue sin reconocerse.
+IMPORTANTE: al terminar, CIERRE la consola y abra una nueva. Si no, el
+comando node sigue sin reconocerse.
 
-Compruebe que quedo bien:
+Compruebe:
 
     node -v
     npm -v
 
 
 --------------------------------------------------------------------
- PASO 2 - COLOCAR LA CARPETA DEL PROYECTO
+ PASO 2 - INSTALAR GIT
 --------------------------------------------------------------------
 
-Copie la carpeta completa del proyecto al equipo. Por ejemplo:
+Git es lo que permite descargar el proyecto y, mas adelante, traer las
+actualizaciones sin volver a copiar carpetas a mano.
 
-    C:\SIGEV
+Revise si ya lo tiene:
 
-Tambien se puede descargar del repositorio:
+    git --version
 
-    git clone https://github.com/Blandoxs/Residencias-Pulido.git C:\SIGEV
+Si responde algo como  git version 2.51.0.windows.1 , pase al PASO 3.
 
-Despues situese en esa carpeta. Este comando se usa cada vez que se va
-a encender el sistema:
+Si no lo reconoce, instalelo:
+
+  OPCION A - Desde la consola:
+
+    winget install Git.Git
+
+  OPCION B - Descargandolo:
+
+    1. Entre a   https://git-scm.com/download/win
+    2. Descargue "64-bit Git for Windows Setup"
+    3. Ejecute el instalador y acepte todas las opciones por omision
+
+Otra vez: CIERRE la consola y abra una nueva al terminar.
+
+Compruebe:
+
+    git --version
+
+
+--------------------------------------------------------------------
+ PASO 3 - DESCARGAR EL PROYECTO
+--------------------------------------------------------------------
+
+Elija donde va a vivir el sistema. En esta guia se usa C:\SIGEV
+
+    cd C:\
+    git clone https://github.com/Blandoxs/Residencias-Pulido.git SIGEV
+
+Eso crea la carpeta C:\SIGEV con todo el proyecto adentro. Entre a
+ella (este comando se usa cada vez que se va a encender el sistema):
 
     cd C:\SIGEV
 
-(Si la carpeta esta en otra ruta, cambie C:\SIGEV por la suya. Si la
-ruta lleva espacios, va entre comillas:  cd "C:\Users\danyh\Recidencias Pulido" )
+Compruebe que se descargo bien: debe listar server.js, package.json,
+las carpetas src y public, y este mismo archivo.
+
+    dir
+
+Para traer actualizaciones mas adelante, estando dentro de C:\SIGEV:
+
+    git pull
+
+(La base de datos NO se toca al actualizar: vive en la carpeta datos\,
+que git ignora a proposito.)
 
 
 --------------------------------------------------------------------
- PASO 3 - PRIMER ARRANQUE Y CONTRASENA
+ PASO 4 - PRIMER ARRANQUE Y CONTRASENA
 --------------------------------------------------------------------
 
 Solo la primera vez, arranquelo asi:
@@ -97,9 +157,7 @@ SOLA VEZ:
        Contrasena: xxxxxxxxxxxxxx
     ***********************************************************
 
-Tambien queda guardada en el archivo:
-
-    datos\acceso-inicial.txt
+Tambien queda guardada en el archivo  datos\acceso-inicial.txt
 
 Abra el sistema en este equipo:
 
@@ -109,16 +167,16 @@ Entre con el usuario admin y esa contrasena. Lo PRIMERO que debe hacer
 es cambiarla: menu de su nombre (arriba a la derecha) -> Cambiar
 contrasena. Despues borre el archivo datos\acceso-inicial.txt.
 
-Para detener el servidor: presione   Ctrl + C   en la consola.
-
 Si en algun momento se pierde esa contrasena, se restablece desde la
-consola del equipo con:
+consola del propio equipo:
 
     npm run clave -- admin MiContrasenaNueva
 
+Para detener el servidor: presione   Ctrl + C   en la consola.
+
 
 --------------------------------------------------------------------
- PASO 4 - ENCENDERLO PARA TODA LA RED
+ PASO 5 - ENCENDERLO PARA TODA LA RED
 --------------------------------------------------------------------
 
 Este es el comando que se usa de aqui en adelante:
@@ -137,8 +195,8 @@ solo en el equipo. Al arrancar muestra la direccion exacta:
      Base de datos:   C:\SIGEV\datos\sigev.db
     ------------------------------------------------------------
 
-Anote esa direccion (http://192.168.0.5:3000): es la que se escribe en
-los demas dispositivos.
+Anote esa direccion: es la que se escribe en los demas dispositivos.
+La suya puede ser distinta a 192.168.0.5.
 
 La consola debe quedarse abierta mientras el sistema este en uso. Se
 puede minimizar, pero si se cierra, el sistema se apaga.
@@ -149,7 +207,7 @@ Tambien se puede encender con doble clic en el archivo:
 
 
 --------------------------------------------------------------------
- PASO 5 - PERMITIR EL PUERTO EN EL FIREWALL (UNA SOLA VEZ)
+ PASO 6 - PERMITIR EL PUERTO EN EL FIREWALL (UNA SOLA VEZ)
 --------------------------------------------------------------------
 
 Windows bloquea por omision las conexiones que llegan de otros equipos.
@@ -168,7 +226,7 @@ Debe responder:  Aceptar.
 
 Ademas, si la red de este equipo esta marcada como "Publica", Windows
 restringe aun mas. Conviene marcarla como privada (misma consola de
-administrador, cambie Wi-Fi por Ethernet si usa cable):
+administrador; cambie Wi-Fi por Ethernet si usa cable):
 
     Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
 
@@ -182,7 +240,7 @@ Para quitar el permiso mas adelante (si se deja de usar):
 
 
 --------------------------------------------------------------------
- PASO 6 - ENTRAR DESDE LOS DEMAS DISPOSITIVOS
+ PASO 7 - ENTRAR DESDE LOS DEMAS DISPOSITIVOS
 --------------------------------------------------------------------
 
 En el telefono o en otra computadora, conectados a la MISMA red:
@@ -199,7 +257,13 @@ la toman como busqueda en Google.
 
 Cada persona entra con su propia cuenta. Las cuentas se dan de alta
 desde el sistema: seccion 04 Administracion -> Usuarios, eligiendo su
-perfil (Administrador, Jefe de Seguridad o Encargado de Documentacion).
+perfil:
+
+    Administrador             ve y administra todo el sistema
+    Jefe de Seguridad         Extintores y Equipo de Seguridad
+    Encargado de Documentacion   Gafetes y Licencias
+
+Los tres ven Panel, Vigencias, Alertas y Personal.
 
 
 --------------------------------------------------------------------
@@ -221,14 +285,20 @@ perfil (Administrador, Jefe de Seguridad o Encargado de Documentacion).
 
   y busque "Direccion IPv4" de su adaptador de red.
 
+  Actualizar el sistema a la ultima version:
+
+    cd C:\SIGEV
+    git pull
+    npm run red
+
 
 --------------------------------------------------------------------
  QUE LA DIRECCION NO CAMBIE (RECOMENDADO)
 --------------------------------------------------------------------
 
-La IP del equipo (192.168.0.5) puede cambiar al reiniciar el modem,
-y entonces los demas dispositivos ya no lo encontrarian en la misma
-direccion. Para evitarlo hay dos caminos:
+La IP del equipo puede cambiar al reiniciar el modem, y entonces los
+demas dispositivos ya no lo encontrarian en la misma direccion. Para
+evitarlo hay dos caminos:
 
   1. Pedirle al area de redes que reserve una IP fija para este equipo
      (es lo correcto en la instalacion de CFE), o
@@ -247,7 +317,7 @@ direccion que muestra la consola al arrancar y usar la nueva.
 
 Toda la informacion vive en un solo archivo:
 
-    datos\sigev.db
+    C:\SIGEV\datos\sigev.db
 
 Para respaldar: DETENGA el servidor (Ctrl + C) y copie la carpeta
 datos\ completa a una USB o carpeta de red. Para restaurar, reemplace
@@ -288,6 +358,9 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
      No se instalo Node.js, o no se cerro y volvio a abrir la consola
      despues de instalarlo. Vea el PASO 1.
 
+ "git no se reconoce como comando"
+     Lo mismo con Git: vea el PASO 2 y abra una consola nueva.
+
  "Error: listen EADDRINUSE ... 3000"
      El puerto ya esta ocupado, casi siempre porque el sistema ya estaba
      encendido en otra ventana. Cierre esa ventana, o use otro puerto:
@@ -296,14 +369,14 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
          npm run red
 
  Abre en esta computadora pero no en el telefono
-     1. Falta la regla del firewall (PASO 5)
+     1. Falta la regla del firewall (PASO 6)
      2. El telefono esta en otra red (datos moviles, o una Wi-Fi de
         invitados que aisla los dispositivos)
      3. Se escribio la direccion sin http:// al inicio
 
  Olvide la contrasena del administrador
-     Se restablece desde la consola del propio equipo, en la carpeta del
-     proyecto:
+     Se restablece desde la consola del propio equipo, dentro de la
+     carpeta del proyecto:
 
          npm run clave -- admin MiContrasenaNueva
 
@@ -311,9 +384,9 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
 
          npm run clave
 
-     Solo funciona con acceso fisico al equipo y al archivo de la base de
-     datos; no se puede hacer desde la red. Aun asi, conviene tener dos
-     cuentas con perfil Administrador.
+     Solo funciona con acceso fisico al equipo y al archivo de la base
+     de datos; no se puede hacer desde la red. Aun asi, conviene tener
+     dos cuentas con perfil Administrador.
 
  La pagina se ve pero dice "Modo demostracion"
      Eso es la version de exhibicion publicada en internet, no el
@@ -322,39 +395,53 @@ Las contrasenas NUNCA se escriben dentro de los archivos del proyecto.
 
 
 --------------------------------------------------------------------
- ANEXO - TODOS LOS COMANDOS JUNTOS
+ ANEXO - TODOS LOS COMANDOS, DE CERO A FUNCIONANDO
 --------------------------------------------------------------------
 
   # 1. Comprobar Node.js (debe ser v22 o mayor)
   node -v
 
-  # 2. Si no esta instalado
+  # 2. Si no esta, instalarlo y ABRIR UNA CONSOLA NUEVA
   winget install OpenJS.NodeJS.LTS
-  #    ...cerrar la consola y abrir una nueva...
 
-  # 3. Ir a la carpeta del proyecto
+  # 3. Comprobar Git
+  git --version
+
+  # 4. Si no esta, instalarlo y ABRIR UNA CONSOLA NUEVA
+  winget install Git.Git
+
+  # 5. Descargar el proyecto
+  cd C:\
+  git clone https://github.com/Blandoxs/Residencias-Pulido.git SIGEV
   cd C:\SIGEV
 
-  # 4. Primer arranque (anotar la contrasena que aparece)
+  # 6. Primer arranque (anotar la contrasena que aparece)
   npm start
+  #    ...abrir http://localhost:3000, entrar y cambiar la contrasena...
+  #    ...detener con Ctrl + C...
 
-  # 5. En una consola COMO ADMINISTRADOR, una sola vez:
+  # 7. En una consola COMO ADMINISTRADOR, una sola vez:
   netsh advfirewall firewall add rule name="SIGEV (puerto 3000)" dir=in action=allow protocol=TCP localport=3000 profile=any
   Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
 
-  # 6. De aqui en adelante, para encenderlo:
+  # 8. De aqui en adelante, para encenderlo:
   cd C:\SIGEV
   npm run red
 
-  # 7. Direccion para los demas dispositivos: la que muestra la consola
+  # 9. Direccion para los demas dispositivos: la que muestra la consola
   #    Ejemplo:  http://192.168.0.5:3000
 
-  # Si se pierde la contrasena del administrador:
+  # Actualizar a la ultima version
+  cd C:\SIGEV
+  git pull
+
+  # Si se pierde la contrasena del administrador
   npm run clave -- admin MiContrasenaNueva
 
 ====================================================================
  Instalacion actual de referencia
-   Carpeta:    C:\Users\danyh\Recidencias Pulido
-   Direccion:  http://192.168.0.5:3000
-   Puerto:     3000
+   Carpeta:     C:\Users\danyh\Recidencias Pulido
+   Direccion:   http://192.168.0.5:3000
+   Puerto:      3000
+   Demostracion: https://blandoxs.github.io/Residencias-Pulido/
 ====================================================================
