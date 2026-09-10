@@ -15,7 +15,8 @@
     "demo": "node scripts/servidor-estatico.js",
     "publicar": "node scripts/publicar-demostracion.js",
     "reiniciar-bd": "node --disable-warning=ExperimentalWarning scripts/reiniciar-bd.js",
-    "clave": "node --disable-warning=ExperimentalWarning scripts/restablecer-clave.js"
+    "clave": "node --disable-warning=ExperimentalWarning scripts/restablecer-clave.js",
+    "autoarranque": "powershell -ExecutionPolicy Bypass -File scripts/arranque-automatico.ps1"
   },
   "keywords": [
     "cfe",

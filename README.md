@@ -65,8 +65,17 @@ desde una consola **como administrador**:
 netsh advfirewall firewall add rule name="SIGEV (puerto 3000)" dir=in action=allow protocol=TCP localport=3000 profile=any
 ```
 
+Para que el equipo lo encienda solo cada vez que alguien inicia sesión:
+
+```bash
+npm run autoarranque
+```
+
+(`npm run autoarranque -- -quitar` lo desactiva.)
+
 En Windows también se puede encender con doble clic en `INICIAR-SIGEV.bat`. La guía completa
-—instalar Node, primer arranque, firewall, respaldo y problemas comunes— está en
+—instalar Node y Git, clonar, primer arranque, firewall, arranque automático, instalarlo en
+otra computadora, respaldo y problemas comunes— está en
 [`INSTALACION.txt`](INSTALACION.txt), escrita para seguirse desde la consola.
 
 Para desarrollo con recarga automática:
@@ -302,6 +311,7 @@ Recidencias Pulido/
 ├── scripts/
 │   ├── generar-logos.ps1        Genera las versiones transparentes del logotipo
 │   ├── servidor-red.js          Arranque escuchando en toda la red local
+│   ├── arranque-automatico.ps1  Deja el servidor encendido al iniciar sesión
 │   ├── restablecer-clave.js     Restablece la contraseña de un usuario
 │   ├── reiniciar-bd.js
 │   ├── servidor-estatico.js     Prueba local del modo demostración

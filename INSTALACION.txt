@@ -278,6 +278,61 @@ Los tres ven Panel, Vigencias, Alertas y Personal.
 
 
 --------------------------------------------------------------------
+ PASO 8 - QUE EL SERVIDOR ARRANQUE SOLO (RECOMENDADO)
+--------------------------------------------------------------------
+
+Hasta aqui, el sistema se enciende a mano y se apaga cuando se cierra la
+ventana. En un equipo que va a estar dando servicio conviene que se
+encienda solo.
+
+  OPCION A - Al iniciar sesion (no necesita permisos de administrador)
+
+    npm run autoarranque
+
+  Eso coloca un acceso directo en la carpeta de Inicio de Windows. A
+  partir de ahi, cada vez que alguien inicie sesion en este equipo, SIGEV
+  se enciende solo en una ventana minimizada.
+
+  Para desactivarlo:
+
+    npm run autoarranque -- -quitar
+
+  Para ver si esta activado, abra la carpeta de Inicio:
+
+    explorer shell:startup
+
+  (debe aparecer un acceso directo llamado SIGEV)
+
+  OPCION B - Con la computadora encendida, aunque nadie inicie sesion
+
+  Sirve cuando el equipo se queda prendido como servidor y no se le
+  inicia sesion. Necesita consola COMO ADMINISTRADOR y que se escriba la
+  ruta real de la carpeta:
+
+    schtasks /create /tn "SIGEV" /tr "C:\SIGEV\INICIAR-SIGEV.bat" /sc onstart /ru SYSTEM /rl highest /f
+
+  Para comprobarla, iniciarla a mano o quitarla:
+
+    schtasks /query  /tn "SIGEV"
+    schtasks /run    /tn "SIGEV"
+    schtasks /delete /tn "SIGEV" /f
+
+COMO SABER SI ESTA ENCENDIDO
+
+  Desde el propio equipo, abra   http://localhost:3000
+  O desde la consola:
+
+    curl http://localhost:3000
+
+  Si responde el HTML de la pagina, esta encendido. Si dice que no se
+  pudo conectar, esta apagado.
+
+IMPORTANTE: el equipo no debe suspenderse ni apagarse mientras se use el
+sistema. En Configuracion de Windows -> Sistema -> Inicio y apagado,
+ponga "Suspender" en Nunca cuando este conectado a la corriente.
+
+
+--------------------------------------------------------------------
  USO DIARIO
 --------------------------------------------------------------------
 
@@ -300,7 +355,72 @@ Los tres ven Panel, Vigencias, Alertas y Personal.
 
     cd C:\SIGEV
     git pull
+    npm install
     npm run red
+
+  Que se encienda solo al iniciar sesion:
+
+    npm run autoarranque
+
+
+--------------------------------------------------------------------
+ INSTALARLO EN OTRA COMPUTADORA
+--------------------------------------------------------------------
+
+El sistema no esta amarrado a este equipo. Para dejarlo corriendo en
+otra computadora (por ejemplo la del area de Seguridad e Higiene, o un
+equipo que se quede encendido como servidor):
+
+ 1. En la computadora NUEVA, repita los PASOS 1 al 6 de esta guia:
+    Node.js, Git, clonar el proyecto, npm install, primer arranque y la
+    regla del firewall.
+
+ 2. Tres cosas cambian y hay que revisarlas:
+
+    LA DIRECCION. Cada computadora tiene la suya. NO use 192.168.0.5:
+    esa es la de este equipo. La direccion correcta la imprime el propio
+    sistema al arrancar con npm run red, o se consulta con:
+
+        ipconfig
+
+    LA CARPETA. En esta guia se usa C:\SIGEV, pero puede ser cualquiera.
+    Si la ruta lleva espacios, va entre comillas al hacer cd.
+
+    EL PUERTO. Si el 3000 ya lo ocupa otro programa en ese equipo, use
+    otro antes de arrancar:
+
+        set PORT=8080
+        npm run red
+
+    Entonces la direccion sera http://<IP-del-equipo>:8080 y la regla
+    del firewall debe abrir 8080 en lugar de 3000.
+
+ 3. Avise a los usuarios la direccion nueva: es lo unico que escriben en
+    el navegador de su telefono o computadora.
+
+LLEVARSE LA INFORMACION DE UN EQUIPO A OTRO
+
+Si ya se venia trabajando en esta computadora y quiere continuar en la
+nueva sin perder los registros:
+
+ 1. En el equipo VIEJO, detenga el servidor (Ctrl + C).
+ 2. Copie la carpeta   datos\   completa a una USB.
+ 3. En el equipo NUEVO, con el servidor detenido, pegue esa carpeta
+    dentro del proyecto, reemplazando la que se creo sola.
+ 4. Encienda con npm run red.
+
+Se lleva todo: personal, gafetes, extintores, equipo, licencias,
+usuarios, alertas y bitacora. Las contrasenas siguen siendo las mismas
+porque viajan cifradas dentro de ese archivo.
+
+UNA SOLA COMPUTADORA GUARDA LA INFORMACION
+
+Esto es importante: si dos computadoras corren SIGEV al mismo tiempo, NO
+comparten datos. Serian dos sistemas independientes, cada uno con su
+propia base, y lo que se capture en uno no aparece en el otro.
+
+Elija UN equipo como servidor. Los demas NO instalan nada: solo abren la
+direccion en el navegador.
 
 
 --------------------------------------------------------------------
@@ -462,12 +582,15 @@ Si algo falla, el sistema NO se detiene: anota el motivo (por ejemplo
   netsh advfirewall firewall add rule name="SIGEV (puerto 3000)" dir=in action=allow protocol=TCP localport=3000 profile=any
   Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
 
-  # 8. De aqui en adelante, para encenderlo:
+  # 8. Que se encienda solo al iniciar sesion (opcional)
+  npm run autoarranque
+
+  # 9. De aqui en adelante, para encenderlo a mano:
   cd C:\SIGEV
   npm run red
 
-  # 9. Direccion para los demas dispositivos: la que muestra la consola
-  #    Ejemplo:  http://192.168.0.5:3000
+  # 10. Direccion para los demas dispositivos: la que muestra la consola
+  #     La de ESTE equipo es http://192.168.0.5:3000; en otro sera otra.
 
   # Actualizar a la ultima version
   cd C:\SIGEV
